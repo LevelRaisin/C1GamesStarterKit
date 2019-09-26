@@ -11,7 +11,6 @@ DamageRecord = namedtuple("DamageRecord", ["count", "damage"])
 
 def execute_standard_strategy(game_state, state):
     reset_state(game_state, state)
-    reserve_resources_for_emp(game_state, state)
     build_defense(game_state, state)
     build_offense(game_state, state)
     build_inner_defense_3(game_state, state)
@@ -23,11 +22,6 @@ def reset_state(game_state, state):
     state["scramblers_built"] = 0
     state["pings_built"] = 0
     state["emps_built"] = 0
-    state["attack_log"] = {
-        "PING": DamageRecord(count=0, damage=0),
-        "EMP": DamageRecord(0, 0),
-        "SCRAMBLER": DamageRecord(0, 0),
-    }
 
     last_turn = game_state.turn_number - 1
     if last_turn in state["attack_log"]:
@@ -44,6 +38,7 @@ def build_defense(game_state, state):
     if game_state.turn_number == 0: 
         build_initial_defense(game_state)
     build_walls(game_state, state) 
+    reserve_resources_for_emp(game_state, state)
     build_inner_defense_1(game_state, state)
     build_outer_defense_1(game_state)
     build_inner_defense_2(game_state, state)
@@ -190,9 +185,10 @@ def build_offense(game_state, state):
 
 
 def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
+    gamelib.debug_write(f"Try to launch ping attack:")
     #if len(state["enemy_units"][DESTRUCTOR]) # TODO: have to identify destructor's "regions" as well...
     # 25% of the time, simply do not attack at all anywhere
-    if random.random() < 0.25: return True # TODO: some work to be done here lol
+    #if random.random() < 0.25: return True # TODO: some work to be done here lol
  
     # calculate paths
     to_right_spawn = [12,1]
@@ -214,7 +210,8 @@ def launch_ping_attack(game_state, state): # -> bool, True if attack was launche
     predicted_lost_of_pings = min(5, int(game_state.get_resource(game_state.BITS, 1) / 2))
     num_pings -= predicted_lost_of_pings
     surviving_pings = num_pings - int(least_hits / 2) 
-    if surviving_pings > 5 and game_state.get_resource(game_state.CORES) > 4: # solid investment, needs 1 encryptor to get the ping power spike
+    gamelib.debug_write(f"num_pings={num_pings}, surviving_pings={surviving_pings}, cores={game_state.get_resource(game_state.CORES)}.")
+    if (surviving_pings > 5 and game_state.get_resource(game_state.CORES) > 4) or surviving_pings > 12: # solid investment, needs 1 encryptor to get the ping power spike
         game_state.attempt_spawn(ENCRYPTOR, [[13,0]])
         game_state.attempt_spawn(PING, [best_spawn], num=num_pings)
         state["attack_log"][game_state.turn_number] = ["PING", game_state.enemy_health]
@@ -235,7 +232,7 @@ def launch_ping_attack(game_state, state): # -> bool, True if attack was launche
 def reserve_resources_for_emp(game_state, state):
     if state["emp_mode"] == READY_TO_FIRE:
         # "reserve hack" for 1 CORE needed to act as piston:
-        game_state._GameState__set_resource(game_state.BITS, -1)
+        game_state._GameState__set_resource(game_state.BITS, -2)
 
 
 def launch_emp_attack(game_state, state):
@@ -248,10 +245,14 @@ def launch_emp_attack(game_state, state):
     if num_enemies >= 3: required_emps = 4
     if num_enemies >= 7: required_emps = 5
     if num_enemies >= 13: required_emps = 6
-    if num_enemies >= 17: required_emps = 7
+    #if num_enemies >= 17: required_emps = 7
+    gamelib.debug_write(f"num_enemies = {num_enemies}")
 
     # LOAD UP THE EMP CANNON:
     if state["emp_mode"] == UNLOADED:
+        # remove previous pistons
+        game_state.attempt_remove([[10,4], [17,4]])
+
         num_bits_next_turn = game_state.project_future_bits(1, 0)
         if num_bits_next_turn < 3 * required_emps:
             return False
@@ -264,8 +265,9 @@ def launch_emp_attack(game_state, state):
     # FIRE THE CANNON
     elif state["emp_mode"] == READY_TO_FIRE:
         # undo "reserve hack" for CORES:
-        game_state._GameState__set_resource(game_state.BITS, 1)
+        game_state._GameState__set_resource(game_state.BITS, 2)
 
+        left_hole, right_hole = [1,13], [26,13]
         left_spawn, right_spawn = [9,4], [18,4]
         left_piston, right_piston = [10,4], [17,4]
 
@@ -284,21 +286,21 @@ def launch_emp_attack(game_state, state):
         # TODO: calculate total amount of obstacles, and predict failure. give some room for error if the enemy responds with extra defenses. if failure, then abort. 
         
         viable_paths = []
-        if [1,13] in left_path: viable_paths.append((left_spawn, left_piston, left_path, right_piston))
-        if [26,13] in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_piston))
+        if left_hole in left_path: viable_paths.append((left_spawn, left_piston, left_path, right_hole))
+        if right_hole in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_hole))
         
         if len(viable_paths) == 0:
             game_state.attempt_spawn(FILTER, [left_piston, right_piston])
             state["emp_mode"] = UNLOADED
             return False
 
-        spawn, piston, path, unused_piston = random.sample(viable_paths, 1)[0]
+        spawn, piston, path, unused_hole = random.sample(viable_paths, 1)[0]
         
         game_state.attempt_spawn(FILTER, [piston])
         game_state.attempt_spawn(EMP, [spawn], required_emps + 1) # always try to add 1 for safety
 
         # early clean up just for safety ;) 
-        game_state.attempt_spawn(FILTER, [unused_piston])
+        game_state.attempt_spawn(FILTER, [unused_hole])
 
         state["emp_mode"] = UNLOADED
         return True

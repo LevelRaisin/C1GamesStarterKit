@@ -15,5 +15,6 @@ dist/*
 scripts/
 
 submit.sh
-submit.zip
+*.zip
 **/*/errorFile*
+.bash_aliases

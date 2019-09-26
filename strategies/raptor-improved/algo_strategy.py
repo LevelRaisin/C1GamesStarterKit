@@ -1,5 +1,4 @@
 from operator import itemgetter
-import copy
 import gamelib
 import random
 import math
@@ -45,6 +44,9 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         self.config = config
         self.state = {
+            "PING": DamageRecord(count=0, damage=0),
+            "EMP": DamageRecord(0, 0),
+            "SCRAMBLER": DamageRecord(0, 0),
             "emp_mode": UNLOADED,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),
@@ -67,9 +69,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.analyze_board(game_state)
 
         ####### Can specify which type of gameplay we want to use here: ########
-        # TODO other gameplays:
+        # TODO:
+        # read opponent turn 1 placements
+        # opponent_type = classification_function.classify(placements)
+        # our_strategy = get_counter(opponent_type)
+        # execute(our_strategy)
 
-        # if self.gameplay_type == ...
         execute_standard_strategy(game_state, self.state)
 
         game_state.submit_turn()
