@@ -14,5 +14,6 @@ dist/*
 *.swp
 scripts/
 
+submit.sh
 submit.zip
 **/*/errorFile*
