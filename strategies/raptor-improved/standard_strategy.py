@@ -1,3 +1,4 @@
+import math
 import copy
 import gamelib
 from constants import *
@@ -13,6 +14,9 @@ def execute_standard_strategy(game_state, state):
     reserve_resources_for_emp(game_state, state)
     build_defense(game_state, state)
     build_offense(game_state, state)
+    build_inner_defense_3(game_state, state)
+    launch_scrambler_defense(game_state, state)
+    send_scramblers(game_state, state)
 
 
 def reset_state(game_state, state):
@@ -65,9 +69,9 @@ def build_walls(game_state, state):
     budget = game_state.number_affordable(FILTER)
 
     # calculate walls and cost
-    cheap_borders = [[0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [26, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
+    cheap_borders = [[0, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
     cheap_borders_cost = get_need_to_build(game_state, FILTER, cheap_borders)
-    stable_borders = [[0, 13], [1, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [26, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
+    stable_borders = [[0, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
     stable_borders_cost = get_need_to_build(game_state, FILTER, stable_borders)
 
     # prefer stable ones if it's same price or cheaper
@@ -157,10 +161,11 @@ def build_outer_defense_2(game_state, state):
 def build_inner_defense_3(game_state, state):
     """unused"""
     if game_state.get_resource(game_state.CORES) > 40:
-        if state["danger_unit"] == FILTER:
-            pass
-        elif state["danger_unit"] == EMP:
-            pass
+        game_state.attempt_spawn(DESTRUCTOR, [[11,4], [16,4]])
+        #if state["danger_unit"] == FILTER:
+        #    pass
+        #elif state["danger_unit"] == EMP:
+        #    pass
 
 def build_outer_defense_3(game_state, state):
     """unused"""
@@ -185,6 +190,10 @@ def build_offense(game_state, state):
 
 
 def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
+    #if len(state["enemy_units"][DESTRUCTOR]) # TODO: have to identify destructor's "regions" as well...
+    # 25% of the time, simply do not attack at all anywhere
+    if random.random() < 0.25: return True # TODO: some work to be done here lol
+ 
     # calculate paths
     to_right_spawn = [12,1]
     to_left_spawn = [15,1]
@@ -202,6 +211,8 @@ def launch_ping_attack(game_state, state): # -> bool, True if attack was launche
 
     # calculate ROI
     num_pings = game_state.number_affordable(PING)
+    predicted_lost_of_pings = min(5, int(game_state.get_resource(game_state.BITS, 1) / 2))
+    num_pings -= predicted_lost_of_pings
     surviving_pings = num_pings - int(least_hits / 2) 
     if surviving_pings > 5 and game_state.get_resource(game_state.CORES) > 4: # solid investment, needs 1 encryptor to get the ping power spike
         game_state.attempt_spawn(ENCRYPTOR, [[13,0]])
@@ -224,12 +235,15 @@ def launch_ping_attack(game_state, state): # -> bool, True if attack was launche
 def reserve_resources_for_emp(game_state, state):
     if state["emp_mode"] == READY_TO_FIRE:
         # "reserve hack" for 1 CORE needed to act as piston:
-        game_state.__set_resource(game_state.BITS, -1)
+        game_state._GameState__set_resource(game_state.BITS, -1)
 
 
 def launch_emp_attack(game_state, state):
-    # useful in both rounds:
+    # prioritize pings or scramblers
     num_enemies = len(state["enemy_units"][DESTRUCTOR]) 
+    if game_state.get_resource(game_state.BITS) > 5 * num_enemies:
+        return False
+    # useful in both rounds:
     required_emps = 3
     if num_enemies >= 3: required_emps = 4
     if num_enemies >= 7: required_emps = 5
@@ -239,7 +253,7 @@ def launch_emp_attack(game_state, state):
     # LOAD UP THE EMP CANNON:
     if state["emp_mode"] == UNLOADED:
         num_bits_next_turn = game_state.project_future_bits(1, 0)
-        if num_bits_next_turn < 12 + 3 * required_emps:
+        if num_bits_next_turn < 3 * required_emps:
             return False
 
         # predicted to have sufficient bits:
@@ -250,7 +264,7 @@ def launch_emp_attack(game_state, state):
     # FIRE THE CANNON
     elif state["emp_mode"] == READY_TO_FIRE:
         # undo "reserve hack" for CORES:
-        game_state.__set_resource(game_state.BITS, 1)
+        game_state._GameState__set_resource(game_state.BITS, 1)
 
         left_spawn, right_spawn = [9,4], [18,4]
         left_piston, right_piston = [10,4], [17,4]
@@ -258,35 +272,78 @@ def launch_emp_attack(game_state, state):
         # left pathing test:
         game_state_cp = copy.deepcopy(game_state)
         game_state_cp.attempt_spawn(FILTER, left_piston)
-        left_path = game_state_cp.find_path_to_edge(left_piston, game_state.game_map.TOP_RIGHT)
+        left_path = game_state_cp.find_path_to_edge(left_spawn, game_state.game_map.TOP_RIGHT)
 
         # undo the left pathing test:
         game_state_cp.game_map.remove_unit(left_piston)
-        game_state.__set_resource(game_state.BITS, 1)
+        game_state._GameState__set_resource(game_state.BITS, 1)
         # right pathing test:
         game_state_cp.attempt_spawn(FILTER, right_piston)
-        right_path = game_state_cp.find_path_to_edge(right_piston, game_state.game_map.TOP_LEFT)
+        right_path = game_state_cp.find_path_to_edge(right_spawn, game_state.game_map.TOP_LEFT)
 
         # TODO: calculate total amount of obstacles, and predict failure. give some room for error if the enemy responds with extra defenses. if failure, then abort. 
         
         viable_paths = []
-        if left_piston in left_path: viable_paths.append((left_spawn, left_piston, left_path, right_piston))
-        if right_piston in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_piston))
+        if [1,13] in left_path: viable_paths.append((left_spawn, left_piston, left_path, right_piston))
+        if [26,13] in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_piston))
         
-        if len(viable_paths) < 0:
+        if len(viable_paths) == 0:
             game_state.attempt_spawn(FILTER, [left_piston, right_piston])
             state["emp_mode"] = UNLOADED
             return False
 
-        spawn, piston, path, unused_piston in random.sample(viable_paths, 1)
+        spawn, piston, path, unused_piston = random.sample(viable_paths, 1)[0]
         
         game_state.attempt_spawn(FILTER, [piston])
-        game_state.attempt_spawn(EMP, [spawn], emp_required + 1) # always try to add 1 for safety
+        game_state.attempt_spawn(EMP, [spawn], required_emps + 1) # always try to add 1 for safety
 
         # early clean up just for safety ;) 
-        game_state.attempt_spawn(FILTER, [other_piston])
+        game_state.attempt_spawn(FILTER, [unused_piston])
 
         state["emp_mode"] = UNLOADED
         return True
 
+
+######################## SCRAMBLER DEFENSE #####################################
+def launch_scrambler_defense(game_state, state):
+    # defend against ping rush with scramblers:
+    potential_enemy_pings = game_state.get_resource(game_state.BITS, 1)
+    hp_per_ping = len(state["enemy_units"][ENCRYPTOR]) * 3 + 15
+    destructor_hits_per_ping = math.ceil(hp_per_ping / 16)
+    #TODO only count destructors in the center:
+    destructor_kill_count = int(len(state["player_units"][DESTRUCTOR]) * 6 / destructor_hits_per_ping)
+    surviving_pings = potential_enemy_pings - destructor_kill_count
+    scramblers_needed = 0
+    if surviving_pings > 2:
+        scrambler_hits_per_ping = math.ceil(hp_per_ping / 20)
+        scrambler_fire_rate = 7
+        # purposely round down:
+        scramblers_needed = int(scrambler_hits_per_ping * surviving_pings / scrambler_fire_rate)
+    # anti emp measures:
+    if game_state.get_resource(game_state.BITS, 1) >= 15:
+        scramblers_needed = 2
+    # more risk:
+    scramblers_needed -= 1
+
+    # don't spoil a attack for scrambling:
+    my_bits = game_state.get_resource(game_state.BITS)
+    if state["emp_mode"] == READY_TO_FIRE and game_state.project_future_bits(1, 0, my_bits - scramblers_needed) < 12:
+        # TODO dunno what best strat is here, to focus on defense or offense?
+        #scramblers_needed = 0
+        if random.random() < 0.7: scramblers_needed = 0 # focus on attack 70% of time
+    # unless we about to get rickity rekt:
+    if scramblers_needed > 0:
+        gamelib.debug_write(f"Generating {scramblers_needed} scramblers.")
+        if units_at(game_state, [[13,1], [14,2]]):
+            scrambler_locs = [[9,4]]
+        elif units_at(game_state, [[13,2], [14,1]]):
+            scrambler_locs = [[18,4]]
+        else:
+            scrambler_locs = [[9,4], [18,4]]
+        for i in range(scramblers_needed):
+            game_state.attempt_spawn(SCRAMBLER, [scrambler_locs[i % len(scrambler_locs)]])
+
+
+def send_scramblers(game_state, state):
+    pass
 
