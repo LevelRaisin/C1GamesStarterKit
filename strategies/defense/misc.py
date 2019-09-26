@@ -1,3 +1,7 @@
+from collections import defaultdict
+import gamelib
+
+
 def remove_specific_unit_type(unit_type, locations, game_state):
     game_map = game_state.game_map
     for location in locations:
@@ -50,12 +54,23 @@ for row in range(14):
     for x_index in range(x_lower_bound, x_upper_bound + 1):
         ENEMY_LOCATIONS.append([x_index, y_index])
 
-def locate_enemy_units(game_state, unit_type):
-    units = []
-    for enemy_loc in ENEMY_LOCATIONS:
-        if game_state[enemy_loc].unit_type == unit_type:
-            units.append(enemy_loc)
-    return units
+PLAYER_LOCATIONS = []
+for row in range(14):
+    y_index = row
+    x_lower_bound = 13 - row
+    x_upper_bound = 14 + row
+    for x_index in range(x_lower_bound, x_upper_bound + 1):
+        PLAYER_LOCATIONS.append([x_index, y_index])
+
+def locate_units(game_state, is_player):
+    # TODO: modify so that we differentiate between units on the edges, in the center, or by the border center
+    all_units = defaultdict(list) 
+    all_locations = PLAYER_LOCATIONS if is_player else ENEMY_LOCATIONS
+    for location in all_locations:
+        units = game_state.game_map[location]
+        for unit in units:
+            all_units[unit.unit_type].append(unit)
+    return all_units
 
 
 def units_at(game_state, locations):

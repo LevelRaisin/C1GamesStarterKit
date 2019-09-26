@@ -13,3 +13,6 @@ dist/*
 
 *.swp
 scripts/
+
+submit.zip
+**/*/errorFile*
