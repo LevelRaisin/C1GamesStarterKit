@@ -4,8 +4,10 @@ import math
 import warnings
 from sys import maxsize
 import json
+from misc import *
 
-
+DEFENSE_MODE = 0
+ATTACK_MODE = 1
 """
 Most of the algo code you write will be in this file unless you create new
 modules yourself. Start by modifying the 'on_turn' function.
@@ -75,6 +77,11 @@ class AlgoStrategy(gamelib.AlgoCore):
             game_state.attempt_spawn(PING, [13,0], num=35)
 
         game_state.submit_turn()
+
+    ############################ ANALYZE BOARD #################################
+    def analyze_board(self, game_state):
+        self.player_units = locate_units(game_state, is_player = True)
+        self.enemy_units = locate_units(game_state, is_player = False)
 
 if __name__ == "__main__":
     algo = AlgoStrategy()
