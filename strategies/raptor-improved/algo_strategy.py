@@ -1,3 +1,4 @@
+from operator import itemgetter
 import copy
 import gamelib
 import random
@@ -6,10 +7,8 @@ import warnings
 from sys import maxsize
 import json
 from misc import *
-
-SUCCESS_DAG_STATE = -1
-DEFENSE_MODE = 0
-ATTACK_MODE = 1
+from constants import *
+from standard_strategy import execute_standard_strategy
 
 
 """
@@ -36,28 +35,20 @@ class AlgoStrategy(gamelib.AlgoCore):
         """ 
         Read in config and perform any initial setup here 
         """
-        gamelib.debug_write('Configuring your custom algo strategy...')
+        # set some global constants, for ease of use
+        global FILTER, ENCRYPTOR, DESTRUCTOR, PING, EMP, SCRAMBLER, UNIT_TYPES
+        unit_type_names = [itemgetter("shorthand")(item) for item in config["unitInformation"][:6]]
+        FILTER, ENCRYPTOR, DESTRUCTOR, PING, EMP, SCRAMBLER = unit_type_names
+        # python object lol
+        for k,v in zip(unit_type_names, config["unitInformation"][:6]):
+            UNIT_TYPES[k] = v
+
         self.config = config
-        global FILTER, ENCRYPTOR, DESTRUCTOR, PING, EMP, SCRAMBLER
-        FILTER = config["unitInformation"][0]["shorthand"]
-        ENCRYPTOR = config["unitInformation"][1]["shorthand"]
-        DESTRUCTOR = config["unitInformation"][2]["shorthand"]
-        PING = config["unitInformation"][3]["shorthand"]
-        EMP = config["unitInformation"][4]["shorthand"]
-        SCRAMBLER = config["unitInformation"][5]["shorthand"]
-
-        # This is a good place to do initial setup
-        self.mode = DEFENSE_MODE
-        self.navigator = gamelib.navigation.ShortestPathFinder()
-
-
-    #def execute_dag(self, game_state, dag):
-    #    for index, taskname in enumerate(dag):
-    #        task = getattr(self, taskname)
-    #        success = task(game_state)
-    #        if not success:
-    #            return index
-    #    return SUCCESS_DAG_STATE
+        self.state = {
+            "mode": DEFENSE_MODE,
+            "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
+            "navigator": gamelib.navigation.ShortestPathFinder(),
+        }
 
 
     def on_turn(self, turn_state):
@@ -72,6 +63,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Turn {}:'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
+        # gather some state
         self.analyze_board(game_state)
 
         ####### Can specify which type of gameplay we want to use here: ########
@@ -80,58 +72,29 @@ class AlgoStrategy(gamelib.AlgoCore):
         #gamelib.debug_write(f"Bits: {game_state.get_resource(game_state.BITS)}")
 
         # if self.gameplay_type == ...
-        self.gameplay_normal(game_state)
+        execute_standard_strategy(game_state, self.state)
 
         game_state.submit_turn()
 
     ############################ ANALYZE BOARD #################################
     def analyze_board(self, game_state):
-        self.player_units = locate_units(game_state, is_player = True)
-        self.enemy_units = locate_units(game_state, is_player = False)
+        self.state["player_units"] = locate_units(game_state, is_player = True)
+        self.state["enemy_units"] = locate_units(game_state, is_player = False)
     
-    def gameplay_normal(self, game_state):
-        # initial turns:
-        if game_state.turn_number <= 1:
-            self.execute_initial_strategy(game_state, game_state.turn_number)
-            return
+    #def gameplay_normal(self, game_state):
+        # defense_1
 
-        # emergency response:
-        # TODO
-
-        # build static defense here:
-        self.build_walls(game_state)
-        self.build_central_defense_1(game_state)
-        self.build_outer_defense_1(game_state)
-        
         # launch scrambler defense:
-        self.launch_scrambler_defense(game_state)
+        #self.launch_scrambler_defense(game_state)
+
+        # defense_2
 
         # launch attack:
         # TODO tweak these parameters:
-        self.launch_emp_attack(game_state, num_emps=4, bit_leniency=2)
-
-        # extra static defense:
-        # TODO: do we even want this? or just save cores for recovery
-        #self.build_central_defense_2(game_state)
-        #self.build_outer_defense_2(game_state)
+        #self.launch_emp_attack(game_state, num_emps=4, bit_leniency=2)
 
 
-
-    ########################## INITIAL STRATEGY ################################
-    def execute_initial_strategy(self, game_state, turn_number):
-        if turn_number == 0:
-            gamelib.debug_write("Execute initial strategy turn 0")
-            self.build_initial_defense(game_state)
-            return
-
-        if turn_number == 1:
-            gamelib.debug_write("Execute initial strategy turn 1")
-            loc = [12,3] if random.random() > 0.5 else [15,3]
-            game_state.attempt_spawn(DESTRUCTOR, [loc])
-            self.launch_scrambler_defense(game_state)
-
-
-    ############################ SCRAMBLER DEFENSE AGAINST PING RUSH ###########
+    ################### SCRAMBLER DEFENSE AGAINST PING RUSH ####################
     def launch_scrambler_defense(self, game_state):
         # defend against ping rush with scramblers:
         potential_enemy_pings = game_state.get_resource(game_state.BITS, 1)
@@ -145,10 +108,13 @@ class AlgoStrategy(gamelib.AlgoCore):
             scrambler_hits_per_ping = math.ceil(hp_per_ping / 20)
             scrambler_fire_rate = 7
             # purposely round down:
-            scramblers_needed = int(scrambler_hits_per_ping * surviving_pings / scrambler_fire_rate)
+            scramblers_needed = int(scrambler_hits_per_ping * surviving_pings / scrambler_fire_rate) 
         # anti emp measures:
         if game_state.get_resource(game_state.BITS, 1) >= 15:
             scramblers_needed = 2
+
+        # more risk:
+        scramblers_needed -= 1 
 
         # don't spoil a attack for scrambling:
         my_bits = game_state.get_resource(game_state.BITS) 
@@ -235,54 +201,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         # TODO
         pass
 
-
-    ######################### STATIC DEFENSE ###################################
-
-    # central_defense_1 + shortcutted walls (because of 40 core constraint)
-    def build_initial_defense(self, game_state):
-        filter_locations =  [[0,13], [1,13], [2,13], [25,13], [26,13], [27,13]]
-        filter_locations += [[3+i,12-i] for i in range(8)]
-        filter_locations += [[17+i,5+i] for i in range(8)]
-        filter_locations += [[11,5], [12,5],  [15,5], [16,5]]
-        game_state.attempt_spawn(FILTER, filter_locations)
-
-        destructor_locations = [[12,4], [15,4]]
-        game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-
-        
-    def build_walls(self, game_state):
-        # don't interrupt attack lol:
-        if self.mode != ATTACK_MODE:
-            wall_opening_locs = [[1,13], [26,13]]
-            game_state.attempt_spawn(FILTER, wall_opening_locs)
-
-        # build best wall according to given resources, use scramblers to fill in if needed
-        # TODO allow for 2 destrucotrs on ends
-        filter_locations =  [[0,13], [2,13], [25,13], [27,13]]
-        filter_locations += [[3+i,12-i] for i in range(8)]
-        filter_locations += [[17+i,5+i] for i in range(8)]
-        filter_locations += [[11,5], [12,5],  [15,5], [16,5]]
-        game_state.attempt_spawn(FILTER, filter_locations)
-
-
-    def build_central_defense_1(self, game_state):
-        destructor_locations = [[12,4], [15,4]]
-        game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-
-
-    def build_central_defense_2(self, game_state):
-        # TODO
-        pass
-
-
-    def build_outer_defense_1(self, game_state):
-        # TODO
-        pass
-
-
-    def build_outer_defense_2(self, game_state):
-        # TODO
-        pass
 
     
 if __name__ == "__main__":
