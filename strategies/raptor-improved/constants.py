@@ -14,9 +14,11 @@ UNIT_TYPES = {
     SCRAMBLER: None,
 }
 
-# standard strategy's status/mode
-DEFENSE_MODE = 0
-ATTACK_MODE = 1
+# standard strategy's EMP attack status
+UNLOADED = 0
+READY_TO_FIRE = 1
+FIRE_LEFT = 1
+FIRE_RIGHT = 2
 
 # map locations
 ENEMY_LOCATIONS = []
