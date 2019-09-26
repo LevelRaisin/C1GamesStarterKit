@@ -45,6 +45,7 @@ def split_resources_with_preference(num_needed, resources_available, preference,
 
 
 def locate_units(game_state, is_player):
+    """ do not use, use the stored state """
     # TODO: modify so that we differentiate between units on the edges, in the center, or by the border center
     all_units = defaultdict(list) 
     locations = PLAYER_LOCATIONS if is_player else ENEMY_LOCATIONS
@@ -122,3 +123,7 @@ def print_map(game_state):
     s += "".join("=" * 112)
     s += "\n\n"
     gamelib.debug_write(s)
+
+
+def get_damage_in_path(game_state, path):
+    return sum(len(game_state.get_attackers(loc, 1)) for loc in path)

@@ -9,7 +9,6 @@ from misc import *
 from constants import *
 from standard_strategy import execute_standard_strategy
 
-
 """
 Most of the algo code you write will be in this file unless you create new
 modules yourself. Start by modifying the 'on_turn' function.
@@ -44,9 +43,11 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         self.config = config
         self.state = {
-            "PING": DamageRecord(count=0, damage=0),
-            "EMP": DamageRecord(0, 0),
-            "SCRAMBLER": DamageRecord(0, 0),
+            "attack_log": {
+                "PING": [0,0],
+                "EMP": [0,0],
+                "SCRAMBLER": [0,0],
+            },
             "emp_mode": UNLOADED,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),

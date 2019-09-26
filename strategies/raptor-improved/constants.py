@@ -1,3 +1,7 @@
+# game_map directions:
+TOP_RIGHT = 0
+TOP_LEFT = 1
+
 # unit types. the strings will be overloaded with rich object data once algo starts:
 FILTER = "FF"
 ENCRYPTOR = "EF"
