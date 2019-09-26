@@ -69,7 +69,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
+        gamelib.debug_write('Turn {}:'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
         self.analyze_board(game_state)
@@ -77,8 +77,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         ####### Can specify which type of gameplay we want to use here: ########
         # TODO other gameplays:
 
-        gamelib.debug_write(f"Bits: {game_state.get_resource(game_state.BITS)}")
-        gamelib.debug_write("")
+        #gamelib.debug_write(f"Bits: {game_state.get_resource(game_state.BITS)}")
 
         # if self.gameplay_type == ...
         self.gameplay_normal(game_state)
@@ -148,15 +147,18 @@ class AlgoStrategy(gamelib.AlgoCore):
             # purposely round down:
             scramblers_needed = int(scrambler_hits_per_ping * surviving_pings / scrambler_fire_rate)
         # anti emp measures:
-        if game_state.get_resource(game_state.BITS, 1) > 12:
-            my_bits = game_state.get_resource(game_state.BITS) 
-            # don't spoil a attack for scrambling:
-            if my_bits < 14 and self.mode == ATTACK_MODE:
-                scramblers_needed = my_bits - 12
-            # unless we about to get rickity rekt:
-            scramblers_needed = max(2, scramblers_needed)
-        if scramblers_needed >= 0:
-            gamelib.debug_write(f"Generating {scramblers_needed} scramblers, bits remaining (before decay) = {game_state.get_resource(game_state.BITS) - scramblers_needed}.")
+        if game_state.get_resource(game_state.BITS, 1) >= 15:
+            scramblers_needed = 2
+
+        # don't spoil a attack for scrambling:
+        my_bits = game_state.get_resource(game_state.BITS) 
+        if self.mode == ATTACK_MODE and game_state.project_future_bits(1, 0, my_bits - scramblers_needed) < 12: 
+            # TODO dunno what best strat is here, to focus on defense or offense?
+            #scramblers_needed = 0
+            if random.random() < 0.7: scramblers_needed = 0 # focus on attack 70% of time
+        # unless we about to get rickity rekt:
+        if scramblers_needed > 0:
+            gamelib.debug_write(f"Generating {scramblers_needed} scramblers.")
             if units_at(game_state, [[13,1], [14,2]]):
                 scrambler_locs = [[9,4]]
             elif units_at(game_state, [[13,2], [14,1]]):
@@ -182,8 +184,8 @@ class AlgoStrategy(gamelib.AlgoCore):
             # TODO: predict enemy EMP attack, counter with stacking of bits
 
             # if have enough for attack, open walls to prepare for attack
-            if (game_state.project_future_bits(1, 0) >= 3 * num_emps + bit_leniency and 
-                game_state.project_future_bits(1, 1) < 15):
+            if (game_state.project_future_bits(1, 0) >= 3 * num_emps + bit_leniency):
+                #game_state.project_future_bits(1, 1) < 15): # dont attack on impending large enemy attack
                 game_state.attempt_remove([[1,13], [26,13]])
                 # set ready flag for attack:
                 self.mode = ATTACK_MODE
@@ -207,7 +209,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 # check pathing
                 LEFT, RIGHT = game_state_cp.game_map.TOP_LEFT, game_state_cp.game_map.TOP_RIGHT
                 pathing = game_state_cp.find_path_to_edge(emp_start, RIGHT if is_left else LEFT)
-                #gamelib.debug_write(f"Expected pathing length: {expected_length}, actual length: {len(pathing)}, pathing: {pathing}, is_left={is_left}")
+                gamelib.debug_write(f"Hole is in pathing...?: {hole in pathing[24:28]}, pathing: {pathing}, is_left={is_left}")
                 if hole in pathing[24:28]:
                 # if pathing is expected, then launch emps:
                     self._prepare_emp_launch(game_state, guides, other_guides, hole, other_hole)
