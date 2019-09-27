@@ -51,6 +51,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             "emp_mode": UNLOADED,
             "emp_round": 0,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
+            "opponent_battlefield_pattern": None,
             "navigator": gamelib.navigation.ShortestPathFinder(),
             "breaches": {
                 "inner": {
@@ -124,6 +125,10 @@ class AlgoStrategy(gamelib.AlgoCore):
     def analyze_board(self, game_state):
         self.state["player_units"] = locate_units(game_state, is_player = True)
         self.state["enemy_units"] = locate_units(game_state, is_player = False)
+        # collect pattern every 5 turns
+        # for a better understanding of their pattern
+        if game_state.turn_number % 5 == 0:
+            self.state["opponent_battlefield_pattern"] = get_def_setup(game_state)
     
     #def gameplay_normal(self, game_state):
         # launch scrambler defense:

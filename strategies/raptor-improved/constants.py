@@ -13,6 +13,11 @@ HOLES = [
 TOP_RIGHT = 0
 TOP_LEFT = 1
 
+# opponent types:
+RAPTOR = "R"
+SMILE = "S"
+UNKNOWN = "NA"
+
 # unit types. the strings will be overloaded with rich object data once algo starts:
 FILTER = "FF"
 ENCRYPTOR = "EF"

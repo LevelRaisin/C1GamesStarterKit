@@ -156,3 +156,6 @@ def get_edge_region(x, y):
         else:
             return "wall"+terminator
 
+def get_def_setup(game_state):
+    # TODO: Get opponents defense setup
+    pass
