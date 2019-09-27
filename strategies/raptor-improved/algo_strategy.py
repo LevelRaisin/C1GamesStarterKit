@@ -91,17 +91,21 @@ class AlgoStrategy(gamelib.AlgoCore):
         unit deployments, and transmitting your intended deployments to the
         game engine.
         """
+
+        game_state = gamelib.GameState(self.config, turn_state)
+        gamelib.debug_write("Turn {}:".format(game_state.turn_number))
+        # if len(self.state["breaches"]["total"])>1:
+        #     gamelib.debug_write(f"""o: {self.state["breaches"]["outerR"][3][-1]}""")
+        #     gamelib.debug_write(f"""o: {self.state["breaches"]["outerR"][4][-1]}""")
+        #     gamelib.debug_write(f"""o: {self.state["breaches"]["outerR"][5][-1]}""")
+        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
+        
         for reg in MAP_REGIONS:
             self.state["breaches"][reg][3].append(0)
             self.state["breaches"][reg][4].append(0)
             self.state["breaches"][reg][5].append(0)
         self.state["breaches"]["total"].append(0)
 
-        game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write("Turn {}:".format(game_state.turn_number))
-        gamelib.debug_write(f"""Inner Damage: {self.state["breaches"]["inner"]}""")
-        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
-        
         # gather some state
         self.analyze_board(game_state)
 
@@ -141,7 +145,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             unit_owner_self = True if breach[4] == 1 else False
             # When parsing the frame data directly, 
             # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
-            if unit_owner_self:
+            if not unit_owner_self:
                 region = get_edge_region(location[0], location[1])
                 cur=self.state["breaches"][region][breach[2]]
                 total=self.state["breaches"]["total"]
