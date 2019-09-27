@@ -44,17 +44,16 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         # This is a good place to do initial setup
         self.mode = DEFENSE_MODE
-        self.navigator = gamelib.navigation.ShortestPathFinder()
-
-
-    #def execute_dag(self, game_state, dag):
-    #    for index, taskname in enumerate(dag):
-    #        task = getattr(self, taskname)
-    #        success = task(game_state)
-    #        if not success:
-    #            return index
-    #    return SUCCESS_DAG_STATE
-
+        self.state = {
+            "attack_log": {
+                "PING": [0,0],
+                "EMP": [0,0],
+                "SCRAMBLER": [0,0],
+            },
+            "emp_mode": UNLOADED,
+            "danger_unit": PING,
+            "navigator": gamelib.navigation.ShortestPathFinder(),
+        }
 
     def on_turn(self, turn_state):
         """
@@ -65,23 +64,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
-        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
-        
-        self.analyze_board(game_state)
+        gamelib.debug_write('>> ping-spam: Turn {}'.format(game_state.turn_number))
+        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings. 
 
-        ####### Can specify which type of gameplay we want to use here: ########
-        # TODO other gameplays:
+        curr_cores = game_state.get_resource(game_state.CORES)
+        curr_bits = game_state.get_resource(game_state.BITS)
 
-        if random.random() < 0.3:
-            game_state.attempt_spawn(PING, [13,0], num=35)
+        # Spam encrytors + ping combo
+        build_encryptors(game_state, self.state, self.config, curr_cores)
+        game_state.attempt_spawn(PING, [13,0], num=35)
 
         game_state.submit_turn()
-
-    ############################ ANALYZE BOARD #################################
-    def analyze_board(self, game_state):
-        self.player_units = locate_units(game_state, is_player = True)
-        self.enemy_units = locate_units(game_state, is_player = False)
 
 if __name__ == "__main__":
     algo = AlgoStrategy()
