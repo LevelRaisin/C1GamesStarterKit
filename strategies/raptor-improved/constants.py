@@ -1,3 +1,14 @@
+# EMP attack hole locations:
+#HOLES = [
+#    [[1,13], [26,13]],
+#    [[1,13], [26,13]],
+#    [[5,10], [22,10]],
+#]
+HOLES = [
+    [[5,10], [22,10]],
+    [[1,13], [26,13]],
+]
+
 # game_map directions:
 TOP_RIGHT = 0
 TOP_LEFT = 1
@@ -38,3 +49,10 @@ for row in range(14):
     x_upper_bound = 14 + row
     for x_index in range(x_lower_bound, x_upper_bound + 1):
         PLAYER_LOCATIONS.append([x_index, y_index])
+
+
+# WALL LOCATIONS:
+CHEAP_BORDERS = set([(0, 13), (1, 13), (2, 13), (3, 13), (4, 13), (23, 13), (24, 13), (25, 13), (26, 13), (27, 13), (5, 12), (22, 12), (4, 11), (23, 11)])
+STABLE_BORDERS = set([(0, 13), (1, 13), (2, 13), (3, 13), (4, 13), (23, 13), (24, 13), (25, 13), (26, 13),  (27, 13), (5, 12), (22, 12), (4, 11), (23, 11)])
+L_WALL = set([(10, 5), (9, 6), (8, 7), (7, 8), (6, 9), (5, 10)])
+R_WALL = set([(17, 5), (18, 6), (19, 7), (20, 8), (21, 9), (22, 10)])

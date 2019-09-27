@@ -134,6 +134,14 @@ def split_evenly(n, buckets):
     return counts
 
 
-
 def get_damage_in_path(game_state, path):
     return sum(len(game_state.get_attackers(loc, 0)) for loc in path)
+
+
+
+def is_edge(loc):
+    return abs(loc[0] - 13.5) + abs(loc[1] - 13.5) == 14
+
+
+def get_holes(state):
+    return HOLES[state["emp_round"] % len(HOLES)]

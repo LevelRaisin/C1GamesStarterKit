@@ -49,6 +49,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 "SCRAMBLER": [0,0],
             },
             "emp_mode": UNLOADED,
+            "emp_round": 0,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),
         }

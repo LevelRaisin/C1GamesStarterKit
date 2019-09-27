@@ -7,7 +7,7 @@ from misc import *
 ############################ HIGH LEVEL ########################################
 
 def execute_standard_strategy(game_state, state):
-    gamelib.debug_write(f"Enemy health: {game_state.enemy_health}")
+    #gamelib.debug_write(f"Enemy health: {game_state.enemy_health}")
     reset_state(game_state, state)
     build_defense(game_state, state)
     build_offense(game_state, state)
@@ -42,6 +42,7 @@ def build_defense(game_state, state):
     reserve_resources_for_emp(game_state, state)
     build_inner_defense_1(game_state, state)
     build_outer_defense_1(game_state)
+    delete_weak_walls(game_state, state)
     build_inner_defense_2(game_state, state)
     build_outer_defense_2(game_state, state)
 
@@ -54,20 +55,51 @@ def build_initial_defense(game_state):
     game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
 
 
+def delete_weak_walls(game_state, state):
+    cores_needed = 0
+    num_cores = game_state.get_resource(game_state.CORES)
+    if num_cores == 0: # used up all cores to build defense
+        return False
+
+    l_wall = [[10, 5], [9, 6], [8, 7], [7, 8], [6, 9], [5, 10]]
+    r_wall = [[17, 5], [18, 6], [19, 7], [20, 8], [21, 9], [22, 10]]
+    stable_borders = [[0, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
+    wall_locs = l_wall + r_wall + stable_borders
+    tiles = filter(lambda _: _, get_tiles(game_state, wall_locs)) # filter out missing walls
+    tiles = [tile[0] for tile in tiles] # retrieve singular stationary unit
+
+    # EDIT: we don't need this snippet here; if num_cores > 0, means we finished building our defense, and have some cores to spare.
+      # cores_needed += len(wall_locs) - len(tiles)
+
+    weak_tiles = list(filter(lambda tile: tile.stability <= 10, tiles))
+    weak_tiles.sort(key=lambda tile: tile.stability)
+
+    tiles_to_fix = weak_tiles[:int(num_cores)]
+    coords = [[tile.x, tile.y] for tile in tiles_to_fix]
+
+    if coords:
+        game_state.attempt_remove(coords)
+    return True
+
+
 def build_walls(game_state, state):
     """Basic funnel-wall defense."""
     # don't interrupt attack lol:
     if state["emp_mode"] != READY_TO_FIRE:
-        wall_opening_locs = [[1,13], [26,13]]
+        left_hole, right_hole = get_holes(state)
+        wall_opening_locs = [left_hole, right_hole]
         game_state.attempt_spawn(FILTER, wall_opening_locs)
 
     # build best wall according to given resources, use scramblers to fill in if needed
     budget = game_state.number_affordable(FILTER)
 
+    # exclude these points:
+    holes = set(tuple(lst) for lst in get_holes(state))
+
     # calculate walls and cost
-    cheap_borders = [[0, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
+    cheap_borders = [list(tup) for tup in CHEAP_BORDERS - holes]
     cheap_borders_cost = get_need_to_build(game_state, FILTER, cheap_borders)
-    stable_borders = [[0, 13], [2, 13], [3, 13], [4, 13], [23, 13], [24, 13], [25, 13], [27, 13], [5, 12], [22, 12], [4, 11], [23, 11]]
+    stable_borders = [list(tup) for tup in STABLE_BORDERS - holes]
     stable_borders_cost = get_need_to_build(game_state, FILTER, stable_borders)
 
     # prefer stable ones if it's same price or cheaper
@@ -75,9 +107,9 @@ def build_walls(game_state, state):
         cheap_borders = stable_borders
         cheap_borders_cost = stable_borders_cost
 
-    l_wall = [[10, 5], [9, 6], [8, 7], [7, 8], [6, 9], [5, 10]]
+    l_wall = [list(tup) for tup in L_WALL - holes]
     l_wall_cost = get_need_to_build(game_state, FILTER, l_wall)
-    r_wall = [[17, 5], [18, 6], [19, 7], [20, 8], [21, 9], [22, 10]]
+    r_wall = [list(tup) for tup in R_WALL - holes]
     r_wall_cost = get_need_to_build(game_state, FILTER, r_wall)
 
     game_state.attempt_spawn(FILTER, l_wall)
@@ -155,13 +187,13 @@ def build_outer_defense_2(game_state, state):
 
 
 def build_inner_defense_3(game_state, state):
-    """unused"""
     if game_state.get_resource(game_state.CORES) > 40:
         game_state.attempt_spawn(DESTRUCTOR, [[11,4], [16,4]])
         #if state["danger_unit"] == FILTER:
         #    pass
         #elif state["danger_unit"] == EMP:
         #    pass
+
 
 def build_outer_defense_3(game_state, state):
     """unused"""
@@ -182,8 +214,8 @@ def execute_one_of(fns, *args):
 
 
 def build_offense(game_state, state):
-    execute_one_of([emp_followup_attack_with_scramblers], game_state, state)
-    #execute_one_of([emp_followup_attack_with_scramblers, launch_ping_attack, launch_emp_attack], game_state, state)
+    #execute_one_of([emp_followup_attack_with_scramblers], game_state, state)
+    execute_one_of([emp_followup_attack_with_scramblers, launch_ping_attack, launch_emp_attack], game_state, state)
 
 
 def emp_followup_attack_with_scramblers(game_state, state):
@@ -197,6 +229,7 @@ def emp_followup_attack_with_scramblers(game_state, state):
 
     # calculate paths and damages
     paths = [game_state.find_path_to_edge(spawn_loc, target_edge) for spawn_loc, target_edge in zip(spawn_locs, target_edges)]
+    paths = list(filter(lambda path: path and is_edge(path[-1]), paths))
     path_damages = [get_damage_in_path(game_state, path) for path in paths]
     path_infos = list(zip(path_damages, spawn_locs)) # package all the information together
 
@@ -227,14 +260,14 @@ def emp_followup_attack_with_scramblers(game_state, state):
         game_state.attempt_spawn(SCRAMBLER, [spawn], num)
 
     # add a destructor to counter their scramblers:
-    if game_state.get_resource(game_state.CORES) > 12:
-        game_state.attempt_spawn(FILTER, [14,13])
+    if game_state.get_resource(game_state.CORES) >= 6:
+        #game_state.attempt_spawn(FILTER, [14,13])
         game_state.attempt_spawn(DESTRUCTOR, [14,12])
     return True
 
 
 def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
-    if state["emp_mode"] == READY_TO_FIRE:
+    if state["emp_mode"] == READY_TO_FIRE or len(state["enemy_units"][DESTRUCTOR]) >= 8:
         return False # do emp attack instead
 
     #gamelib.debug_write(f"Try to launch ping attack:")
@@ -263,7 +296,7 @@ def launch_ping_attack(game_state, state): # -> bool, True if attack was launche
     num_pings -= predicted_lost_of_pings
     surviving_pings = num_pings - int(least_hits / 2) 
     #gamelib.debug_write(f"num_pings={num_pings}, surviving_pings={surviving_pings}, cores={game_state.get_resource(game_state.CORES)}.")
-    if (surviving_pings > 5 and game_state.get_resource(game_state.CORES) > 4) or surviving_pings > 12: # solid investment, needs 1 encryptor to get the ping power spike
+    if (surviving_pings > 5 and (game_state.get_resource(game_state.CORES) > 4) or game_state.game_map[13,0] and game_state.game_map[13,0][0].unit_type == ENCRYPTOR): # solid investment, needs 1 encryptor to get the ping power spike
         game_state.attempt_spawn(ENCRYPTOR, [[13,0]])
         game_state.attempt_spawn(PING, [best_spawn], num=num_pings)
         state["attack_log"][game_state.turn_number] = ["PING", game_state.enemy_health]
@@ -307,7 +340,8 @@ def launch_emp_attack(game_state, state):
             return False
 
         # predicted to have sufficient bits:
-        game_state.attempt_remove([[1,13], [26,13]]) # remove both holes
+        left_hole, right_hole = get_holes(state)
+        game_state.attempt_remove([left_hole, right_hole]) # remove both holes
         state["emp_mode"] = READY_TO_FIRE
         return True
 
@@ -316,7 +350,7 @@ def launch_emp_attack(game_state, state):
         # undo "reserve hack" for CORES:
         game_state._GameState__set_resource(game_state.BITS, 2)
 
-        left_hole, right_hole = [1,13], [26,13]
+        left_hole, right_hole = get_holes(state)
         left_spawn, right_spawn = [9,4], [18,4]
         left_piston, right_piston = [10,4], [17,4]
 
@@ -350,8 +384,10 @@ def launch_emp_attack(game_state, state):
 
         # early clean up just for safety ;) 
         game_state.attempt_spawn(FILTER, [unused_hole])
+        game_state.attempt_remove([piston])
 
         state["emp_mode"] = UNLOADED
+        state["emp_round"] += 1
         return True
 
 
