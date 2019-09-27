@@ -54,29 +54,29 @@ class AlgoStrategy(gamelib.AlgoCore):
             "navigator": gamelib.navigation.ShortestPathFinder(),
             "breaches": {
                 "inner": {
-                    PING: [],
-                    EMP: [],
-                    SCRAMBLER:[],
+                    3: [],
+                    4: [],
+                    5:[],
                 },
                 "outerL":  {
-                    PING: [],
-                    EMP: [],
-                    SCRAMBLER:[],
+                    3: [],
+                    4: [],
+                    5:[],
                 },
                 "outerR":  {
-                    PING: [],
-                    EMP: [],
-                    SCRAMBLER:[],
+                    3: [],
+                    4: [],
+                    5:[],
                 },
                 "wallL":  {
-                    PING: [],
-                    EMP: [],
-                    SCRAMBLER:[],
+                    3: [],
+                    4: [],
+                    5:[],
                 },
                 "wallR":  {
-                    PING: [],
-                    EMP: [],
-                    SCRAMBLER:[],
+                    3: [],
+                    4: [],
+                    5:[],
                 },
                 "total": [],
             },
@@ -91,9 +91,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         unit deployments, and transmitting your intended deployments to the
         game engine.
         """
+        for reg in MAP_REGIONS:
+            self.state["breaches"][reg][3].append(0)
+            self.state["breaches"][reg][4].append(0)
+            self.state["breaches"][reg][5].append(0)
+        self.state["breaches"]["total"].append(0)
+
         game_state = gamelib.GameState(self.config, turn_state)
         gamelib.debug_write("Turn {}:".format(game_state.turn_number))
-        gamelib.debug_write(f"""Total Damage: {self.state["breaches"]["total"]}""")
+        gamelib.debug_write(f"""Inner Damage: {self.state["breaches"]["inner"]}""")
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
         # gather some state
@@ -130,12 +136,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         state = json.loads(turn_string)
         events = state["events"]
         breaches = events["breach"]
-        if state["turnInfo"][2]==0:
-            for reg in MAP_REGIONS:
-                self.state["breaches"][reg][PING].append(0)
-                self.state["breaches"][reg][EMP].append(0)
-                self.state["breaches"][reg][SCRAMBLER].append(0)
-            self.state["breaches"]["total"].append(0)
         for breach in breaches:
             location = breach[0]
             unit_owner_self = True if breach[4] == 1 else False
@@ -143,7 +143,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
             if unit_owner_self:
                 region = get_edge_region(location[0], location[1])
-                cur=self.state["breaches"][region][breach[3]]
+                cur=self.state["breaches"][region][breach[2]]
                 total=self.state["breaches"]["total"]
                 cur[-1]+=1
                 total[-1]+=1
