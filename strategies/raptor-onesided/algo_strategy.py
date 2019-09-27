@@ -48,16 +48,10 @@ class AlgoStrategy(gamelib.AlgoCore):
                 "EMP": [0,0],
                 "SCRAMBLER": [0,0],
             },
-            "preset_attack": None,
-            "is_emp_attacking": False,
-            "reserve_needed": 0,
+            "emp_mode": UNLOADED,
             "emp_round": 0,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),
-            "hole": None,
-            "walls": [[0, 13], [1, 13], [2, 13], [23, 13], [24, 13], [25, 13], [26, 13], [27, 13], [3, 12],
-                      [22, 12], [22, 11],  [4, 11], [5, 10], [6, 10], [21, 10], [7, 9], [8, 9], [19, 9],
-                      [20, 9], [9, 8], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8], [18, 8]]
         }
 
 

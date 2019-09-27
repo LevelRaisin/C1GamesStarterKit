@@ -104,16 +104,6 @@ def replace_unit(game_state, location, old_unit, new_unit):
     return True
         
 
-def replace_and_update_wall(game_state, state, location, old_unit, new_unit):
-    if UNIT_TYPES[new_unit]["cost"] > game_state.get_resource(game_state.CORES):
-        return False
-    tile = game_state.game_map[location]
-    if tile and tile[0].unit_type == old_unit:
-        game_state.attempt_remove(location)
-    game_state.attempt_spawn(new_unit, [location])
-    return True
-        
-
 def print_map(game_state):
     s = "\n"
     s += "Map:\n"
@@ -153,28 +143,5 @@ def is_edge(loc):
     return abs(loc[0] - 13.5) + abs(loc[1] - 13.5) == 14
 
 
-def get_hole(state):
-    return state["hole"][state["emp_round"] % len(state["hole"])]
-
-
-def set_budget(game_state, limit):
-    num_cores = game_state.get_resource(game_state.CORES)
-    game_state._GameState__set_resource(game_state.CORES, -num_cores) # zero out
-    real_limit = min(limit, num_cores)
-    game_state._GameState__set_resource(game_state.CORES, real_limit)
-    return num_cores - real_limit
-
-def unset_budget(game_state, saved):
-    game_state._GameState__set_resource(game_state.CORES, saved)
-
-
-def set_reserve(game_state, reserve):
-    num_cores = game_state.get_resource(game_state.CORES)
-    real_reserve = min(reserve, num_cores)
-    game_state._GameState__set_resource(game_state.CORES, -real_reserve)
-    return real_reserve
-
-def unset_reserve(game_state, real_reserve):
-    game_state._GameState__set_resource(game_state.CORES, real_reserve)
-
-
+def get_holes(state):
+    return state["holes"][state["emp_round"] % len(state["holes"])]
