@@ -1,4 +1,4 @@
 $scriptPath = Split-Path -parent $PSCommandPath;
-$algoPath = "$scriptPath\\algo_strategy_maze_raptor.py"
+$algoPath = "$scriptPath\\algo_strategy.py"
 
 python $algoPath
