@@ -136,8 +136,7 @@ def split_evenly(n, buckets):
 
 def get_damage_in_path(game_state, path):
     return sum(len(game_state.get_attackers(loc, 0)) for loc in path)
-
-
+    
 
 def is_edge(loc):
     return abs(loc[0] - 13.5) + abs(loc[1] - 13.5) == 14
@@ -145,3 +144,15 @@ def is_edge(loc):
 
 def get_holes(state):
     return HOLES[state["emp_round"] % len(HOLES)]
+
+
+def get_edge_region(x, y):
+    if y_index<=4:
+        return "inner"
+    else:
+        terminator = 'L' if x<=13 else 'R'
+        if y_index>=9:
+            return "outer"+terminator
+        else:
+            return "wall"+terminator
+

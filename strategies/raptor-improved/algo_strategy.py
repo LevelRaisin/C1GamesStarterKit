@@ -52,6 +52,34 @@ class AlgoStrategy(gamelib.AlgoCore):
             "emp_round": 0,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),
+            "breaches": {
+                "inner": {
+                    PING: [],
+                    EMP: [],
+                    SCRAMBLER:[],
+                },
+                "outerL":  {
+                    PING: [],
+                    EMP: [],
+                    SCRAMBLER:[],
+                },
+                "outerR":  {
+                    PING: [],
+                    EMP: [],
+                    SCRAMBLER:[],
+                },
+                "wallL":  {
+                    PING: [],
+                    EMP: [],
+                    SCRAMBLER:[],
+                },
+                "wallR":  {
+                    PING: [],
+                    EMP: [],
+                    SCRAMBLER:[],
+                },
+                "total": [],
+            },
         }
 
 
@@ -64,7 +92,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write('Turn {}:'.format(game_state.turn_number))
+        gamelib.debug_write("Turn {}:".format(game_state.turn_number))
+        gamelib.debug_write(f"""Total Damage: {self.state["breaches"]["total"]}""")
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
         # gather some state
@@ -90,6 +119,34 @@ class AlgoStrategy(gamelib.AlgoCore):
         # launch scrambler defense:
         #self.launch_scrambler_defense(game_state)
 
+    def on_action_frame(self, turn_string):
+        """
+        This is the action frame of the game. This function could be called 
+        hundreds of times per turn and could slow the algo down so avoid putting slow code here.
+        Processing the action frames is complicated so we only suggest it if you have time and experience.
+        Full doc on format of a game frame at: https://docs.c1games.com/json-docs.html
+        """
+        # Let's record at what position we get scored on
+        state = json.loads(turn_string)
+        events = state["events"]
+        breaches = events["breach"]
+        if state["turnInfo"][2]==0:
+            for reg in MAP_REGIONS:
+                self.state["breaches"][reg][PING].append(0)
+                self.state["breaches"][reg][EMP].append(0)
+                self.state["breaches"][reg][SCRAMBLER].append(0)
+            self.state["breaches"]["total"].append(0)
+        for breach in breaches:
+            location = breach[0]
+            unit_owner_self = True if breach[4] == 1 else False
+            # When parsing the frame data directly, 
+            # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
+            if unit_owner_self:
+                region = get_edge_region(location[0], location[1])
+                cur=self.state["breaches"][region][breach[3]]
+                total=self.state["breaches"]["total"]
+                cur[-1]+=1
+                total[-1]+=1
 
     ################### SCRAMBLER DEFENSE AGAINST PING RUSH ####################
     def launch_scrambler_defense(self, game_state):
