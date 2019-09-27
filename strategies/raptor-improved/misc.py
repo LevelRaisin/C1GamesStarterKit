@@ -125,5 +125,15 @@ def print_map(game_state):
     gamelib.debug_write(s)
 
 
+def split_evenly(n, buckets):
+    sz = int(n / buckets)
+    leftovers = n % buckets
+    counts = [sz] * buckets
+    for i in range(leftovers):
+        counts[i] += 1
+    return counts
+
+
+
 def get_damage_in_path(game_state, path):
-    return sum(len(game_state.get_attackers(loc, 1)) for loc in path)
+    return sum(len(game_state.get_attackers(loc, 0)) for loc in path)

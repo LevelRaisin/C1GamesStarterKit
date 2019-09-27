@@ -18,3 +18,4 @@ submit.sh
 *.zip
 **/*/errorFile*
 .bash_aliases
+tmux*

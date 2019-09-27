@@ -7,12 +7,13 @@ from misc import *
 ############################ HIGH LEVEL ########################################
 
 def execute_standard_strategy(game_state, state):
+    gamelib.debug_write(f"Enemy health: {game_state.enemy_health}")
     reset_state(game_state, state)
     build_defense(game_state, state)
     build_offense(game_state, state)
     build_inner_defense_3(game_state, state)
-    launch_scrambler_defense(game_state, state)
-    send_scramblers(game_state, state)
+    #launch_scrambler_defense(game_state, state)
+    #send_scramblers(game_state, state)
 
 
 def reset_state(game_state, state):
@@ -81,11 +82,11 @@ def build_walls(game_state, state):
 
     game_state.attempt_spawn(FILTER, l_wall)
     if budget < l_wall_cost:
-        state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [7,6])
+        state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[7,6]])
 
     game_state.attempt_spawn(FILTER, r_wall)
     if budget < l_wall_cost + r_wall_cost:
-        state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [20,6])
+        state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[20,6]])
 
     if budget > l_wall_cost + r_wall_cost + stable_borders_cost:
         game_state.attempt_spawn(FILTER, stable_borders)
@@ -106,12 +107,12 @@ def plug_borders(game_state, border_locs, state):
     if need_to_build > 7:
         path = game_state.find_path_to_edge([3,10], TOP_RIGHT)
         if path is None or len(path) < 8 or not any(game_state.get_attackers(coord, 1) for coord in path[:6]):
-            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [3,10])
+            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[3,10]])
 
     if need_to_build > 0:
         path = game_state.find_path_to_edge([24,10], TOP_LEFT)
         if path is None or len(path) < 8 or not any(game_state.get_attackers(coord, 1) for coord in path[:6]):
-            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [24,10])
+            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[24,10]])
 
 
 def build_inner_defense_1(game_state, state):
@@ -120,9 +121,9 @@ def build_inner_defense_1(game_state, state):
     num_got = game_state.attempt_spawn(DESTRUCTOR, locs)
     if num_got < num_needed and state["scramblers_built"] < 4:
         if game_state.contains_stationary_unit([14,1]):
-            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [15,1])
+            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[15,1]])
         elif game_state.contains_stationary_unit([13,1]):
-            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [12,1])
+            state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[12,1]])
 
 
 def build_outer_defense_1(game_state):
@@ -181,48 +182,55 @@ def execute_one_of(fns, *args):
 
 
 def build_offense(game_state, state):
+    execute_one_of([emp_followup_attack_with_scramblers], game_state, state)
     #execute_one_of([emp_followup_attack_with_scramblers, launch_ping_attack, launch_emp_attack], game_state, state)
-    execute_one_of([launch_ping_attack, launch_emp_attack], game_state, state)
 
 
 def emp_followup_attack_with_scramblers(game_state, state):
     """Supposed to be a followup to the emp attack. Against shitty defenses, this will work as well lol."""
-    num_new_destructors = int(game_state.get_resource(game_state.CORES, 1) / 6)
-    if num_new_destructors > 5: return False # they can probably recover
+    if game_state.get_resource(game_state.CORES, 1) > 24: return False
+    #num_new_destructors = int(game_state.get_resource(game_state.CORES, 1) / 6)
+    #if num_new_destructors > 5: return False # they can probably recover
 
-    spawn_locs = [[(6,7), TOP_RIGHT], [(21,7), TOP_LEFT]]
+    spawn_locs = [[6,7], [21,7]] # TODO: create more launch points if possible
+    target_edges = [TOP_RIGHT, TOP_LEFT]
 
     # calculate paths and damages
-    paths = (game_state.find_path_to_edge(spawn_loc, target_edge) for spawn_loc, target_edge in spawn_locs)
-    path_damages = (get_damage_in_path(game_state, path) for path in paths)
-    path_infos = zip(path_damages, spawn_locs, paths) # package all the information together
+    paths = [game_state.find_path_to_edge(spawn_loc, target_edge) for spawn_loc, target_edge in zip(spawn_locs, target_edges)]
+    path_damages = [get_damage_in_path(game_state, path) for path in paths]
+    path_infos = list(zip(path_damages, spawn_locs)) # package all the information together
 
     # find safe paths:
-    path_infos = filter(lambda p: p[0] == 0, path_infos) # only get nondestructor paths
+    path_infos = list(filter(lambda p: p[0] == 0, path_infos)) # only get nondestructor paths
 
     # check if attack is feasible
     num_paths = len(path_infos)
     if num_paths == 0: return False # no paths -> abort
-    if num_new_destructors / num_paths > 0.7: return False # they can probably recover lol
+    #if num_new_destructors / num_paths > 0.7: return False # they can probably recover lol
 
     # number of paths to choose:
     num_scramblers = game_state.number_affordable(SCRAMBLER)
-    num_groups = int(num_scramblers / game_state.enemy_health)
-    num_groups = min(num_groups, num_paths)
+    #group_size = game_state.enemy_health
+    #num_groups = int(num_scramblers / group_size)
+    #leftovers = num_scramblers % group_size
+    #num_groups = min(num_groups, num_paths)
+    #if num_groups == 0:
+    #    num_groups = 1
+    #    leftovers = 0
 
-    # choose a random path
-    path_infos = random.sample(scrambler_safe_paths, num_groups) # choose a random path, unpack
+    ## choose a random set of paths
+    #path_infos = random.sample(path_infos, num_groups) # choose as many random paths as possible
 
     # execute:
-    #game_state.spawn_target(
+    nums = split_evenly(num_scramblers, num_paths)
+    for (_, spawn), num in zip(path_infos, nums):
+        game_state.attempt_spawn(SCRAMBLER, [spawn], num)
 
-    
-
-
-    return False
-
-
-
+    # add a destructor to counter their scramblers:
+    if game_state.get_resource(game_state.CORES) > 12:
+        game_state.attempt_spawn(FILTER, [14,13])
+        game_state.attempt_spawn(DESTRUCTOR, [14,12])
+    return True
 
 
 def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
@@ -314,14 +322,14 @@ def launch_emp_attack(game_state, state):
 
         # left pathing test:
         game_state_cp = copy.deepcopy(game_state)
-        game_state_cp.attempt_spawn(FILTER, left_piston)
+        game_state_cp.attempt_spawn(FILTER, [left_piston])
         left_path = game_state_cp.find_path_to_edge(left_spawn, TOP_RIGHT)
 
         # undo the left pathing test:
         game_state_cp.game_map.remove_unit(left_piston)
         game_state._GameState__set_resource(game_state.BITS, 1)
         # right pathing test:
-        game_state_cp.attempt_spawn(FILTER, right_piston)
+        game_state_cp.attempt_spawn(FILTER, [right_piston])
         right_path = game_state_cp.find_path_to_edge(right_spawn, TOP_LEFT)
 
         # TODO: calculate total amount of obstacles, and predict failure. give some room for error if the enemy responds with extra defenses. if failure, then abort. 
