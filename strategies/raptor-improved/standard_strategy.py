@@ -9,9 +9,17 @@ from misc import *
 
 def execute_standard_strategy(game_state, state):
     #gamelib.debug_write(f"Enemy health: {game_state.enemy_health}")
-    reset_state(game_state, state)
-    build_defense(game_state, state)
-    build_offense(game_state, state)
+    if "KAMIKAZE_READY" in state:
+        launch_kamikaze(game_state, state)
+    elif "kamikaze_waiting" in state:
+        wait_and_trigger_kamikaze(game_state, state)
+    elif prepare_kamikaze(game_state, state): 
+        pass
+    else:
+        reset_state(game_state, state)
+        build_defense(game_state, state)
+        build_offense(game_state, state)
+
 
 def reset_state(game_state, state):
     pass
@@ -144,7 +152,7 @@ def build_reinforcing_destructors(game_state, state):
         return False
 
     filter_locs = [[20,10], [4,12], [5,11], [11,9], [12,9], [15,9], [16,9]] # [21,11] need to leave blank for emp attack
-    destructor_locs = [[1,12], [13,6], [12,8], [23,11], [15,8], [2,11], [11,8], [16,8]] 
+    destructor_locs = [[1,12], [13,6], [12,8], [15,8], [23,11], [16,8], [11,8], [2,11], [22,12]] 
 
     if "walls_updated" not in state:
         walls = (set(tuple(l) for l in state["walls"]) - set(tuple(l) for l in destructor_locs)) | set(tuple(l) for l in filter_locs)
@@ -272,6 +280,12 @@ def prepare_emp_attack(game_state, state, emps_required):
 
 
 def launch_emp_attack(hole, emps_required, game_state, state):
+    enemy_dfs = state["enemy_units"][DESTRUCTOR]
+    central_enemy_dfs = list(filter(lambda unit: unit.x >= 10 and unit.x <= 17, enemy_dfs))
+    if ((len(central_enemy_dfs) <= 4 and len(state["player_units"][ENCRYPTOR]) >= 6) or 
+        (len(central_enemy_dfs) <= 6 and len(state["player_units"][ENCRYPTOR]) >= 12)): 
+        if random.random() < 0.7: return False
+
     gamelib.debug_write(f"Attempt to launch emp.")
     spawn = [22,8]
     path = game_state.find_path_to_edge(spawn, TOP_LEFT)
@@ -287,4 +301,88 @@ def launch_emp_attack(hole, emps_required, game_state, state):
     gamelib.debug_write(f"Launching emp attack with {emps_required} EMPs.")
     game_state.attempt_spawn(EMP, spawn, emps_required)
     return True
+
+
+def prepare_kamikaze(game_state, state):
+    # PREPARATION:
+    max_emp = int(game_state.project_future_bits(6, 0) / 3)
+    future_bits = game_state.project_future_bits(5, 0)
+    if future_bits - 12 < game_state.enemy_health: # and game_state.my_health < game_state.enemy_health - 5: # TODO probably add this condition since we only do this when desperate
+        return False
+
+    # Calculate total number of cores:
+    num_cores = game_state.get_resource(game_state.CORES)
+
+    removed_locations = set(tuple(l) for l in PLAYER_LOCATIONS)
+
+    # keep filters on right side:
+    right_wall = [[26, 13], [27, 13], [25, 12], [26, 12], [25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6], [19, 5], [18, 4], [17, 3], [16, 2]]
+    filter_locs = [[tile[0].x, tile[0].y] for tile in get_tiles(game_state, right_wall) if tile and tile[0].unit_type == FILTER]
+    removed_locations -= set(tuple(l) for l in filter_locs)
+    
+    # keep all encryptors in the cannon
+    EF_cannon = [[0, 13], [2, 13], [3, 13], [4, 13], [5, 13], [3, 12], [4, 12], [5, 12], [6, 12], [4, 11], [5, 11], [6, 11], [7, 11], [5, 10], [6, 10], [7, 10], [8, 10], [6, 9], [7, 9], [8, 9], [9, 9], [7, 8], [8, 8], [9, 8], [10, 8], [8, 7], [9, 7], [10, 7], [11, 7], [9, 6], [10, 6], [11, 6], [9, 5], [10, 5], [11, 5], [9, 4], [10, 4], [11, 4], [10, 3]]
+    EF_locs = [[tile[0].x, tile[0].y] for tile in get_tiles(game_state, EF_cannon) if tile and tile[0].unit_type == ENCRYPTOR]
+    removed_locations -= set(tuple(l) for l in EF_locs)
+
+    tiles = get_tiles(game_state, removed_locations)
+    units = (tile[0] for tile in tiles if tile)
+    num_cores += 0.75 * sum(UNIT_TYPES[unit.unit_type]["cost"] * unit.stability / UNIT_TYPES[unit.unit_type]["stability"] for unit in units)
+
+    #if num_cores < 90: return False
+    if num_cores + 30 < 70: return False
+
+    state["kamikaze_waiting"] = True
+    state["kamikaze_removed_locations"] = list(list(l) for l in removed_locations)
+    return True
+
+
+def wait_and_trigger_kamikaze(game_state, state):
+    future_bits = game_state.project_future_bits(1, 0)
+    if future_bits - 12 >= game_state.enemy_health: 
+        removed_locations = state["kamikaze_removed_locations"]
+        game_state.attempt_remove(removed_locations)
+        state["KAMIKAZE_READY"] = True
+
+
+def launch_kamikaze(game_state, state):
+    gamelib.debug_write("BOOM BITCH WHERE YOU AT")
+    if "kamikaze_built" not in state:
+        #right_wall = [[26, 13], [27, 13], [25, 12], [26, 12], [25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6], [19, 5], [18, 4], [17, 3], [16, 2]]
+        #game_state.attempt_spawn(FILTER, right_wall)
+
+        num_cores = game_state.get_resource(game_state.CORES)
+
+        emp_barriers = [[0, 13], [2, 13], [3, 13]]
+        game_state.attempt_spawn(FILTER, emp_barriers)
+
+        cannon_walls = [[3, 12], [4, 11], [5, 10], [6, 9], [7, 8], [8, 7], [9, 6], [10, 5], [11, 4], [12, 3], [13, 2], [14, 1]]
+        num_encryptors, num_filters = split_resources_with_preference(len(cannon_walls), num_cores, ENCRYPTOR, FILTER)
+        encryptor_cannon_walls, filter_cannon_walls = cannon_walls[:num_encryptors], cannon_walls[num_encryptors:]
+        game_state.attempt_spawn(ENCRYPTOR, cannon_walls[:num_encryptors])
+        if filter_cannon_walls:
+            game_state.attempt_spawn(FILTER, cannon_walls[num_encryptors:])
+
+        cannon_2 = [[4, 12], [5, 11], [6, 10], [7, 9], [8, 8], [9, 7], [10, 6], [11, 5], [12, 4], [13, 3], [14, 2], [15, 1]]
+        game_state.attempt_spawn(ENCRYPTOR, cannon_2)
+        
+        cannon_3 = [[5, 12], [6, 11], [7, 10], [8, 9], [9, 8], [10, 7], [11, 6], [12, 5], [13, 4], [14, 3], [15, 2]]
+        game_state.attempt_spawn(ENCRYPTOR, cannon_3)
+        
+        stalling_destructors = [[24, 13], [25, 13], [23, 12], [24, 12], [23, 11], [24, 11], [23, 10], [11, 2], [12, 2], [14, 2], [15, 2], [12, 1], [13, 1], [14, 1], [15, 1], [13, 0], [14, 0]]
+        random.shuffle(stalling_destructors)
+        game_state.attempt_spawn(DESTRUCTOR, stalling_destructors)
+
+        state["kamikaze_built"] = True
+
+    # Perform kamikazeeee
+    if game_state.get_resource(game_state.BITS) > 16:
+        game_state.attempt_spawn(PING, [14,0], num=int(game_state.enemy_health + 2))
+        game_state.attempt_spawn(PING, [13,0], num=6)
+        game_state.attempt_spawn(PING, [12,1], num=4)
+        game_state.attempt_spawn(PING, [14,0], num=99)
+
+        
+
+
 

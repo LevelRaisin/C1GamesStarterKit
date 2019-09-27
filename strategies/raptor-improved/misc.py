@@ -23,7 +23,7 @@ def build_complete(unit_types, locations, game_state):
         
 
 def split_resources_with_preference(num_needed, resources_available, preference, alternative):
-    assert(alternative.cost < preference.cost)
+    #assert(alternative.cost < preference.cost)
 
     # solve the following problem:
     # max
@@ -35,11 +35,12 @@ def split_resources_with_preference(num_needed, resources_available, preference,
     # first use cheap 
     num_preference = 0
     num_alternative = num_needed
-    resources_left = resources_available - num_needed * alternative.cost
-    while resources_left + alternative.cost - preference.cost >= 0 and num_preference < num_needed:
+    pref_cost, alt_cost = UNIT_TYPES[preference]["cost"], UNIT_TYPES[alternative]["cost"]
+    resources_left = resources_available - num_needed * alt_cost
+    while resources_left + alt_cost - pref_cost >= 0 and num_preference < num_needed:
         num_preference += 1
         num_alternative -= 1
-        resources_left += alternative.cost - preference.cost
+        resources_left += alt_cost - pref_cost
 
     return num_preference, num_alternative
 
