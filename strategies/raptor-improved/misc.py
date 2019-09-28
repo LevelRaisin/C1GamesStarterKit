@@ -180,14 +180,12 @@ def unset_reserve(game_state, real_reserve):
     game_state._GameState__set_resource(game_state.CORES, real_reserve)
 
 
-<<<<<<< HEAD
 def get_loc(loc, reverse = False):
     x, y = loc
     if reverse:
         x = 27 - loc[0]
     return [x,y]
 
-=======
 def emps_needed(game_state, reverse):
     edge = TOP_RIGHT if reverse else TOP_LEFT
     my_gs = deepcopy(game_state)
@@ -215,4 +213,6 @@ def emps_needed(game_state, reverse):
                 if enemy.stability<=0:
                     my_gs.game_map.remove_unit([enemy.x, enemy.y])
             curr_loc = next_step
->>>>>>> emps needed
+        if x>0:
+            return x
+    return -1
