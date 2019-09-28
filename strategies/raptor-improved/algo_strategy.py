@@ -48,9 +48,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 "EMP": [0,0],
                 "SCRAMBLER": [0,0],
             },
-            "preset_attack": None,
-            "is_emp_attacking": False,
-            "reserve_needed": 0,
+            "ping_attack_prepared": None,
             "emp_round": 0,
             "danger_unit": PING, # TODO update this to whoever deals lots of damage, enemy attack patterns, etc.
             "navigator": gamelib.navigation.ShortestPathFinder(),

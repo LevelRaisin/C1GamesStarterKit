@@ -179,3 +179,9 @@ def unset_reserve(game_state, real_reserve):
     game_state._GameState__set_resource(game_state.CORES, real_reserve)
 
 
+def get_point(loc, reverse = False):
+    x, y = loc
+    if reverse:
+        x = 27 - loc[0]
+    return [x,y]
+

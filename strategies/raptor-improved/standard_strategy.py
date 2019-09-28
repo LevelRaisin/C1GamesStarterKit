@@ -20,18 +20,13 @@ def reset_state(game_state, state):
 ############################## DEFENSE #########################################
 
 def build_defense(game_state, state):
-    determine_emp_strategy(game_state, state)
     if game_state.turn_number == 0: 
         build_initial_defense(game_state)
     build_walls(game_state, state) 
     build_inner_defense_1(game_state, state)
     build_outer_defense_1(game_state)
-    delete_weak_walls(game_state, state)
-    
-    real_reserve = set_reserve(game_state, 12)
-    build_reinforcing_destructors(game_state, state)
-    build_encryptors(game_state, state)
-    unset_reserve(game_state, real_reserve)
+    delete_weak_prominent_filters(game_state, state)
+    build_encryptors_with_excess_cores(game_state, state)
 
 
 def build_initial_defense(game_state):
@@ -40,13 +35,6 @@ def build_initial_defense(game_state):
     game_state.attempt_spawn(FILTER, filter_locations)
     destructor_locations = [[12, 7], [15, 7]]
     game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-
-
-def determine_emp_strategy(game_state, state):
-    if units_at(game_state, [[8, 20], [7, 19], [6, 18], [5, 17]]):
-        state["hole"] = [[26,13]]
-    else:
-        state["hole"] = [[26,13], [26,13], [22,11]]
 
 
 def delete_weak_walls(game_state, state):
@@ -158,17 +146,6 @@ def build_reinforcing_destructors(game_state, state):
     unset_budget(game_state, saved)
 
 
-def build_encryptors(game_state, state):
-    saved = set_budget(game_state, 8)
-    encryptor_locs = [[12,6], [13,5], [14,5], [15,5], [16,5], [17,5], [19, 7], [19, 6], [19, 5], [19, 8], [20, 8], [20, 7], [21, 7], [20, 6]]
-    encryptor_locs += [[16, 4], [13, 3], [14, 3], [15, 2], [16, 2], [15, 1], [11, 4], [12, 3], [12, 1], [13, 1]]
-    encryptor_locs += [[8, 7], [9, 7], [10, 7], [11, 7], [16, 7], [17, 7], [18, 7], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6], [8, 5], [9, 5], [9, 4]]
-    game_state.attempt_spawn(ENCRYPTOR, encryptor_locs)
-    unset_budget(game_state, saved)
-
-
-
-
 ########################### BUILD OFFENSE ######################################
 def execute_one_of(fns, *args):
     for fn in fns:
@@ -178,77 +155,58 @@ def execute_one_of(fns, *args):
 
 
 def build_offense(game_state, state):
-    tn = game_state.turn_number
-    #         EMP,  PING
-    attack = [2, 6]
-    attack = [2, 14]
-    attack = [3, 16]
-    if tn > 10: attack = [2, 10]
-    elif tn > 20: attack = [2, 10]
-    elif tn > 30: attack = [2, 14]
-    elif tn > 40: attack = [3, 16]
-    ping_attacked = launch_ping_attack(game_state, state)
+    if state["ping_attack_prepared"]:
+        attack = state["ping_attack_prepared"]
+        order = [True, False]
+        random.shuffle(order)
+        success = launch_ping_attack(game_state, state, attack, r = order[0])
+        if success: return
+        success = launch_ping_attack(game_state, state, attack, r = order[1])
+        if success: return
+        brute_ping(game_state, state)
+        state["ping_attack_prepared"] = None
+    else:
+        tn = game_state.turn_number
+        #         EMP,  PING
+        attack = [2, 6]
+        attack = [2, 14]
+        attack = [3, 16]
+        if tn > 10: attack = [2, 10]
+        elif tn > 20: attack = [2, 10]
+        elif tn > 30: attack = [2, 14]
+        elif tn > 40: attack = [3, 16]
 
-    #hole = get_hole(state)
-    #if hole == [22,11]:
-    #    path = [[22,8], [22,9], [22,10], [22,11], [21,11], [21,12], [20,12], [20,13], [19,13], [19,14], [18,14], [18,15], [17,15]]
-    #else:
-    #    path = [[22,8], [22,9], [23,9], [23,10], [24,10], [24,11], [25,11], [25,12], [26,12], [26,13], [26,14], [25,14], [25,15], [24,15], [24,16]]
-    #max_emp = int(game_state.project_future_bits(6, 0) / 3)
-    #for emps_required in range(3, max_emp + 1):
-    #    num_emp = emps_required
-    #    last_step_area = set()
-    #    hits_needed_to_clear = 0
-    #    for step in path:
-    #        curr_step_area = set(tuple(l) for l in game_state.game_map.get_locations_in_range(step, 4.5))
-    #        new_area = curr_step_area - last_step_area
-
-    #        tiles = get_tiles(game_state, list(list(t) for t in new_area))
-    #        units = (tile[0] for tile in tiles if tile)
-    #        enemies = filter(lambda unit: unit.player_index == 1, units)
-    #        num_destructors = len(list(filter(lambda unit: unit.unit_type == DESTRUCTOR, enemies)))
-
-    #        hits_needed_to_clear += sum(math.ceil(unit.stability / 8) for unit in units if unit.player_index == 1)
-    #        hits_available = 2 * num_emp
-    #        if hits_available < hits_needed_to_clear and num_destructors > 0:
-    #            num_emp -= 1
-    #        hits_needed_to_clear = max(hits_needed_to_clear - hits_available, 0)
-    #        if num_emp <= 0: break
-    #        last_step_area = curr_step_area
-    #    if num_emp > 0:
-    #        break
-    #if emps_required < max_emp and random.random() < 0.5: emps_required += 1
-    #prepare_emp_attack(game_state, state, emps_required)
+        n_emps, n_pings = attack
+        n_pings = min(n_pings, game_state.enemy_health + 5)
+        cost = n_emps * 3 + n_pings
+        if game_state.project_future_bits(1, 0) >= cost:
+            prepare_ping_attack(game_state, state)
+            state["ping_attack_prepared"] = attack
 
 
-def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
-    # calculate paths
-    to_right_spawn = [13,0]
-    to_left_spawn = [14,0]
-    to_right_path = game_state.find_path_to_edge(to_right_spawn, TOP_RIGHT)
-    to_left_path = game_state.find_path_to_edge(to_left_spawn, TOP_LEFT)
+def prepare_ping_attack(game_state, state):
+    holes = [get_loc([6,9], True), get_loc([6,9], False)]
+    game_state.attempt_remove(holes)
 
-    # how many destructor hits do we suffer on each path?
-    to_right_hits = get_damage_in_path(game_state, to_right_path)
-    to_left_hits = get_damage_in_path(game_state, to_left_path)
 
-    # calculate enemy's most vulnerable path:
-    best_spawn = to_right_spawn if to_right_hits < to_left_hits else to_left_spawn
-    if random.random() < 0.2: best_spawn = to_right_spawn if to_right_hits >= to_left_hits else to_left_spawn # flip 20% of the time to fuck with enemy, yafeel?
-    least_hits = min(to_right_hits, to_left_hits)
+def launch_ping_attack(game_state, state, attack, r): # -> bool, True if attack was launched, False otherwise
+    hole = get_loc([6,9], r) 
+    ping_spawn_point = get_loc([23,9], r)
+    emp_spawn_point = get_loc([24,10], r)
+    edge = TOP_RIGHT if r else TOP_LEFT
 
-    # calculate ROI
-    num_pings = game_state.number_affordable(PING)
-    num_encryptors = len(state["player_units"][ENCRYPTOR]) 
-    if game_state.can_spawn(ENCRYPTOR, [15,1]): num_encryptors += 1
-    hp_per_ping = 15 + num_encryptors * 3
-    hits_per_ping = math.ceil(hp_per_ping / 16)
-    potential_damage = num_pings - int(least_hits / hits_per_ping)
-    gamelib.debug_write(f"Preparing ping attack: num_pings={num_pings}, expected damage: {potential_damage}.")
-    if potential_damage > 8:
-        game_state.attempt_spawn(ENCRYPTOR, [[15,1]])
-        game_state.attempt_spawn(PING, [best_spawn], num=num_pings)
-        gamelib.debug_write(f"Launching ping attack with {num_pings} pings, expected damage: {potential_damage}")
-        return True
-    return False
+    path = game_state.find_path_to_edge(ping_spawn_point, edge)
+    #if hole not in path: return False # TODO enable or not?
+
+    n_emps, n_pings = attack
+    game_state.attempt_spawn(EMP, emp_spawn_point, num=n_emps)
+    game_state.attempt_spawn(PING, ping_spawn_point, num=n_pings)
+
+
+def build_encryptors_with_excess_cores(game_state, state):
+    n = int((game_state.get_resource(game_state.CORES) - 20))
+    locs = [[9, 6], [10, 6], [17, 6], [18, 6], [10, 5], [11, 5], [16, 5], [17, 5]] + [[11, 4], [12, 4], [13, 4], [14, 4], [15, 4], [16, 4], [12, 3], [13, 3], [14, 3], [15, 3]] + [[12, 1], [13, 1], [14, 1], [15, 1], [13, 0], [14, 0]]
+    empty_locs = [loc for loc in locs if not game_state.game_map[loc]]
+    to_build = empty_locs[:n]
+    game_state.attempt_spawn(ENCRYPTOR, to_build)
 
