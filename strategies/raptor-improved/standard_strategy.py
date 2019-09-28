@@ -47,7 +47,7 @@ def build_defense(game_state, state):
 def build_initial_defense(game_state):
     """Initial static defense."""
     filter_locations = [[0, 13], [1, 13], [2, 13], [25, 13], [26, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [5, 10], [22, 10], [6, 9], [21, 9], [7, 8], [20, 8], [8, 7], [19, 7], [9, 6], [18, 6], [10, 5], [11, 5], [12, 5], [15, 5], [16, 5], [17, 5]]
-    game_state.attempt_spawn(FILTER, filter_locations)
+    game_state.attempt_spawn(ENCRYPTOR, filter_locations)
     destructor_locations = [[12,4], [15,4]]
     game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
 
@@ -85,19 +85,19 @@ def build_walls(game_state, state):
     if state["emp_mode"] != READY_TO_FIRE:
         left_hole, right_hole = get_holes(state)
         wall_opening_locs = [left_hole, right_hole]
-        game_state.attempt_spawn(FILTER, wall_opening_locs)
+        game_state.attempt_spawn(ENCRYPTOR, wall_opening_locs)
 
     # build best wall according to given resources, use scramblers to fill in if needed
-    budget = game_state.number_affordable(FILTER)
+    budget = game_state.number_affordable(ENCRYPTOR)
 
     # exclude these points:
     holes = set(tuple(lst) for lst in get_holes(state))
 
     # calculate walls and cost
     cheap_borders = [list(tup) for tup in CHEAP_BORDERS - holes]
-    cheap_borders_cost = get_need_to_build(game_state, FILTER, cheap_borders)
+    cheap_borders_cost = get_need_to_build(game_state, ENCRYPTOR, cheap_borders)
     stable_borders = [list(tup) for tup in STABLE_BORDERS - holes]
-    stable_borders_cost = get_need_to_build(game_state, FILTER, stable_borders)
+    stable_borders_cost = get_need_to_build(game_state, ENCRYPTOR, stable_borders)
 
     # prefer stable ones if it's same price or cheaper
     if stable_borders_cost <= cheap_borders_cost:
@@ -105,32 +105,32 @@ def build_walls(game_state, state):
         cheap_borders_cost = stable_borders_cost
 
     l_wall = [list(tup) for tup in L_WALL - holes]
-    l_wall_cost = get_need_to_build(game_state, FILTER, l_wall)
+    l_wall_cost = get_need_to_build(game_state, ENCRYPTOR, l_wall)
     r_wall = [list(tup) for tup in R_WALL - holes]
-    r_wall_cost = get_need_to_build(game_state, FILTER, r_wall)
+    r_wall_cost = get_need_to_build(game_state, ENCRYPTOR, r_wall)
 
-    game_state.attempt_spawn(FILTER, l_wall)
+    game_state.attempt_spawn(ENCRYPTOR, l_wall)
     if budget < l_wall_cost:
         state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[7,6]])
 
-    game_state.attempt_spawn(FILTER, r_wall)
+    game_state.attempt_spawn(ENCRYPTOR, r_wall)
     if budget < l_wall_cost + r_wall_cost:
         state["scramblers_built"] += game_state.attempt_spawn(SCRAMBLER, [[20,6]])
 
     if budget > l_wall_cost + r_wall_cost + stable_borders_cost:
-        game_state.attempt_spawn(FILTER, stable_borders)
+        game_state.attempt_spawn(ENCRYPTOR, stable_borders)
     else:
-        game_state.attempt_spawn(FILTER, cheap_borders)
+        game_state.attempt_spawn(ENCRYPTOR, cheap_borders)
     if budget < l_wall_cost + r_wall_cost + cheap_borders_cost:
         plug_borders(game_state, cheap_borders, state)
 
     # excess budget:
     central_destructor_shields = [[11, 5], [12, 5], [15, 5], [16, 5]]
-    game_state.attempt_spawn(FILTER, central_destructor_shields)
+    game_state.attempt_spawn(ENCRYPTOR, central_destructor_shields)
 
 
 def plug_borders(game_state, border_locs, state):
-    need_to_build = get_need_to_build(game_state, FILTER, border_locs)
+    need_to_build = get_need_to_build(game_state, ENCRYPTOR, border_locs)
 
     # if enemy has destructor on early path, don't waste scramblers
     if need_to_build > 7:
@@ -258,7 +258,6 @@ def emp_followup_attack_with_scramblers(game_state, state):
 
     # add a destructor to counter their scramblers:
     if game_state.get_resource(game_state.CORES) >= 6:
-        #game_state.attempt_spawn(FILTER, [14,13])
         game_state.attempt_spawn(DESTRUCTOR, [14,12])
     return True
 
@@ -353,14 +352,14 @@ def launch_emp_attack(game_state, state):
 
         # left pathing test:
         game_state_cp = copy.deepcopy(game_state)
-        game_state_cp.attempt_spawn(FILTER, [left_piston])
+        game_state_cp.attempt_spawn(ENCRYPTOR, [left_piston])
         left_path = game_state_cp.find_path_to_edge(left_spawn, TOP_RIGHT)
 
         # undo the left pathing test:
         game_state_cp.game_map.remove_unit(left_piston)
         game_state._GameState__set_resource(game_state.BITS, 1)
         # right pathing test:
-        game_state_cp.attempt_spawn(FILTER, [right_piston])
+        game_state_cp.attempt_spawn(ENCRYPTOR, [right_piston])
         right_path = game_state_cp.find_path_to_edge(right_spawn, TOP_LEFT)
 
         # TODO: calculate total amount of obstacles, and predict failure. give some room for error if the enemy responds with extra defenses. if failure, then abort. 
@@ -370,17 +369,17 @@ def launch_emp_attack(game_state, state):
         if right_hole in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_hole))
         
         if len(viable_paths) == 0:
-            game_state.attempt_spawn(FILTER, [left_piston, right_piston])
+            game_state.attempt_spawn(ENCRYPTOR, [left_piston, right_piston])
             state["emp_mode"] = UNLOADED
             return False
 
         spawn, piston, path, unused_hole = random.sample(viable_paths, 1)[0]
         
-        game_state.attempt_spawn(FILTER, [piston])
+        game_state.attempt_spawn(ENCRYPTOR, [piston])
         game_state.attempt_spawn(EMP, [spawn], required_emps + 1) # always try to add 1 for safety
 
         # early clean up just for safety ;) 
-        game_state.attempt_spawn(FILTER, [unused_hole])
+        game_state.attempt_spawn(ENCRYPTOR, [unused_hole])
         game_state.attempt_remove([piston])
 
         state["emp_mode"] = UNLOADED
