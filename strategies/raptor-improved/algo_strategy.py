@@ -125,14 +125,11 @@ class AlgoStrategy(gamelib.AlgoCore):
     def analyze_board(self, game_state):
         self.state["player_units"] = locate_units(game_state, is_player = True)
         self.state["enemy_units"] = locate_units(game_state, is_player = False)
-        # collect pattern every 5 turns
-        # for a better understanding of their pattern
-        if game_state.turn_number % 5 == 0:
-            self.state["opponent_battlefield_pattern"] = get_def_setup(game_state)
-    
-    #def gameplay_normal(self, game_state):
-        # launch scrambler defense:
-        #self.launch_scrambler_defense(game_state)
+        # collect pattern every round for a better understanding of their pattern, 
+        # ignore if it's over 25 rounds as it unlikely to change its defensive config
+        turn = game_state.turn_number
+        if turn <= 25:
+            self.state["opponent_battlefield_pattern"] = get_opp_def_setup(game_state)
 
     def on_action_frame(self, turn_string):
         """

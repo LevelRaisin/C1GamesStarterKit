@@ -7,13 +7,10 @@ from misc import *
 ############################ HIGH LEVEL ########################################
 
 def execute_standard_strategy(game_state, state):
-    #gamelib.debug_write(f"Enemy health: {game_state.enemy_health}")
     reset_state(game_state, state)
     build_defense(game_state, state)
     build_offense(game_state, state)
     build_inner_defense_3(game_state, state)
-    #launch_scrambler_defense(game_state, state)
-    #send_scramblers(game_state, state)
 
 
 def reset_state(game_state, state):

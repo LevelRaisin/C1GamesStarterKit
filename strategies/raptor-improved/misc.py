@@ -156,6 +156,69 @@ def get_edge_region(x, y):
         else:
             return "wall"+terminator
 
-def get_def_setup(game_state):
-    # TODO: Get opponents defense setup
-    pass
+
+""" 
+Note: how opponent's regions constants were computed
+ 
+L_WING = game_map.get_locations_in_range([9, 17], 3)
+L_CENTRAL = game_map.get_locations_in_range([13, 18], 4)
+L_PIT = game_map.get_locations_in_range([12, 22], 4)
+L_CORNER = game_map.get_locations_in_range([4, 16], 2)
+L_CORNER_TIP = game_map.get_locations_in_range([2, 14], 2)
+
+R_WING = game_map.get_locations_in_range([18, 17], 3)
+R_CENTRAL = game_map.get_locations_in_range([14, 18], 4)
+R_PIT = game_map.get_locations_in_range([15, 22], 4)
+R_CORNER = game_map.get_locations_in_range([23, 16], 2)
+R_CORNER_TIP = game_map.get_locations_in_range([25, 14], 2)
+
+PIT_AREA = merge_area(L_PIT, R_PIT)
+CENTRAL_AREA = merge_area(L_WING, L_CENTRAL, R_WING, R_CENTRAL)
+CORNER_AREA = merge_area(L_CORNER, L_CORNER_TIP, R_CORNER, R_CORNER_TIP)
+
+def merge_area(*locs):
+    tmp = [tuple(coord) for coord in list(itertools.chain(*locs))]
+    return [list(c) for c in list(set(tmp))]
+"""
+
+def get_opp_def_setup(game_state):
+    # Assumption: symmetric defense
+    # Compute how much is occupied in the central area and the "pit" (funnel opening) are. 
+    # If occupancy is more than 10%, it's most likely some sort of centralized maze/defense.
+    
+    # Caveat: If it's a "tight" raptor, this model will not be accurate,
+    # but since our opponents r also very smart, they would optimize 
+    # space utilization on their field, so this will work irl lol
+
+    occupied_locs = list(filter(game_state.contains_stationary_unit, PIT_AREA))
+    density_pit = float(len(occupied_locs) / len(PIT_AREA))
+
+    occupied_locs = list(filter(game_state.contains_stationary_unit, CENTRAL_AREA))
+    density_central = float(len(occupied_locs) / len(CENTRAL_AREA))
+
+    occupied_locs = list(filter(game_state.contains_stationary_unit, CORNER_AREA))
+    density_corner = float(len(occupied_locs) / len(CORNER_AREA))
+
+    if density_pit > 0.1:
+        if density_central > 0.1:
+            if density_corner > 0.5:
+                return BALANCE
+            else:
+                return POLE
+        else:
+            if density_corner > 0.5:
+                return RAPTOR
+            else:
+                return PIT
+    else:
+        if density_central > 0.1:
+            if density_corner > 0.5:
+                return SMILE
+            else:
+                return CENTRAL
+        else:
+            if density_corner > 0.5:
+                return CORNER
+            else:
+                return NO_DEFENSE
+
