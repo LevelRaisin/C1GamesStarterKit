@@ -1,6 +1,7 @@
 import random
 from operator import attrgetter
 from collections import defaultdict
+from copy import deepcopy
 
 import gamelib
 from constants import *
@@ -179,9 +180,39 @@ def unset_reserve(game_state, real_reserve):
     game_state._GameState__set_resource(game_state.CORES, real_reserve)
 
 
+<<<<<<< HEAD
 def get_loc(loc, reverse = False):
     x, y = loc
     if reverse:
         x = 27 - loc[0]
     return [x,y]
 
+=======
+def emps_needed(game_state, reverse):
+    edge = TOP_RIGHT if reverse else TOP_LEFT
+    my_gs = deepcopy(game_state)
+    curr_loc = get_loc([6,9], reverse)
+    for x in range(1,9):
+        while not is_edge(curr_loc) or x<=0:
+            next_step = my_gs.find_path_to_edge(curr_loc, edge)[1] # index check
+            for num in range(x):
+                my_gs.game_map.add_unit(EMP, next_step, 0)
+            units = my_gs.game_map[next_step[0],next_step[1]]
+            for unit in units:
+                my_gs.get_target(unit).stability-=15
+            enemies = my_gs.game_map.get_locations_in_range(next_step, 3.5)
+            for enemy in enemies:
+                temp = my_gs.game_map[enemy[0],enemy[1]]
+                if len(temp)>0 and my_gs.temp.unit_type==DESTRUCTOR:
+                    my_gs.get_target(temp).stability-=8
+            units= my_gs.game_map.game_map[next_step[0], next_step[1]]
+            for unit in units:
+                if unit.stability < 0:
+                    x-=1
+            my_gs.game_map.remove_unit(next_step)
+            enemies = my_gs.game_map.get_locations_in_range(next_step, 4.5)
+            for enemy in enemies:
+                if enemy.stability<=0:
+                    my_gs.game_map.remove_unit([enemy.x, enemy.y])
+            curr_loc = next_step
+>>>>>>> emps needed
