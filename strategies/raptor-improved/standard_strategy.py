@@ -31,10 +31,12 @@ def build_defense(game_state, state):
 
 def build_initial_defense(game_state):
     """Initial static defense."""
-    filter_locations = [[0, 13], [1, 13], [2, 13], [23, 13], [24, 13], [25, 13], [26, 13], [27, 13], [3, 12], [22, 12], [4, 11], [22, 11], [5, 10], [6, 10], [21, 10], [7, 9], [8, 9], [19, 9], [20, 9], [9, 8], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8], [18, 8]]
-    game_state.attempt_spawn(FILTER, filter_locations)
-    destructor_locations = [[12, 7], [15, 7]]
+    destructor_locations = [[1, 12], [2, 12], [25, 12], [26, 12], [11, 7], [16, 7], [12, 6], [13, 6], [14, 6], [15, 6]]
     game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
+    filter_locations = [[1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
+    game_state.attempt_spawn(FILTER, filter_locations)
+    # UW Meta: not enough for destructors
+    # destructor_locations = [[12,4], [15,4]]
 
 
 def delete_weak_walls(game_state, state):
@@ -67,16 +69,23 @@ def delete_weak_walls(game_state, state):
 
 def build_walls(game_state, state):
     """Basic funnel-wall defense."""
-    # don't interrupt attack lol:
-    hole = get_hole(state)
-    filter_locations = state["walls"]
-    if state["is_emp_attacking"]: filter_locations.remove(hole)
-    game_state.attempt_spawn(FILTER, filter_locations)
-    if state["is_emp_attacking"]: filter_locations.append(hole)
 
-    missing_locs = list(filter(lambda loc: not game_state.game_map[loc], filter_locations))
+    encryptor_locations = [[0, 13], [2, 13], [25, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [5, 10], [22, 10], [7, 8], [8, 8], [9, 8], [18, 8], [19, 8], [20, 8]]
+    # don't interrupt attack lol:
+    holes = []
+    if state["ping_attack_prepared"]:
+        # TODO: sub with get_loc later
+        holes = [[6,9], [21,9]]
+    for hole in holes:
+        encryptor_locations.remove(hole)
+    game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
+    # if state["is_emp_attacking"]: filter_locations.remove(hole)
+    # game_state.attempt_spawn(FILTER, filter_locations)
+    # if state["is_emp_attacking"]: filter_locations.append(hole)
+
+    missing_locs = list(filter(lambda loc: not game_state.game_map[loc], encryptor_locations))
     if len(missing_locs) == 0: return True
-    location_dict = dict(filter_locations)
+    location_dict = dict(encryptor_locations)
     xs = [loc[0] for loc in missing_locs]
     xs.sort()
 
