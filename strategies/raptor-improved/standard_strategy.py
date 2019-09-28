@@ -212,7 +212,7 @@ def execute_one_of(fns, *args):
 
 def build_offense(game_state, state):
     #execute_one_of([emp_followup_attack_with_scramblers], game_state, state)
-    execute_one_of([emp_followup_attack_with_scramblers, launch_ping_attack, launch_emp_attack], game_state, state)
+    execute_one_of([emp_followup_attack_with_scramblers, launch_ping_attack], game_state, state)
 
 
 def emp_followup_attack_with_scramblers(game_state, state):
@@ -315,77 +315,6 @@ def reserve_resources_for_emp(game_state, state):
         # "reserve hack" for 1 CORE needed to act as piston:
         game_state._GameState__set_resource(game_state.BITS, -2)
 
-
-def launch_emp_attack(game_state, state):
-    # prioritize pings or scramblers
-    num_enemies = len(state["enemy_units"][DESTRUCTOR]) 
-    if game_state.get_resource(game_state.BITS) > 5 * num_enemies:
-        return False
-    # useful in both rounds:
-    required_emps = 3
-    if num_enemies >= 3: required_emps = 4
-    if num_enemies >= 7: required_emps = 5
-    if num_enemies >= 13: required_emps = 6
-    #if num_enemies >= 17: required_emps = 7
-    #gamelib.debug_write(f"num_enemies = {num_enemies}")
-
-    # LOAD UP THE EMP CANNON:
-    if state["emp_mode"] == UNLOADED:
-        num_bits_next_turn = game_state.project_future_bits(1, 0)
-        if num_bits_next_turn < 3 * required_emps:
-            return False
-
-        # predicted to have sufficient bits:
-        left_hole, right_hole = get_holes(state)
-        game_state.attempt_remove([left_hole, right_hole]) # remove both holes
-        state["emp_mode"] = READY_TO_FIRE
-        return True
-
-    # FIRE THE CANNON
-    elif state["emp_mode"] == READY_TO_FIRE:
-        # undo "reserve hack" for CORES:
-        game_state._GameState__set_resource(game_state.BITS, 2)
-
-        left_hole, right_hole = get_holes(state)
-        left_spawn, right_spawn = [9,4], [18,4]
-        left_piston, right_piston = [10,4], [17,4]
-
-        # left pathing test:
-        game_state_cp = copy.deepcopy(game_state)
-        game_state_cp.attempt_spawn(ENCRYPTOR, [left_piston])
-        left_path = game_state_cp.find_path_to_edge(left_spawn, TOP_RIGHT)
-
-        # undo the left pathing test:
-        game_state_cp.game_map.remove_unit(left_piston)
-        game_state._GameState__set_resource(game_state.BITS, 1)
-        # right pathing test:
-        game_state_cp.attempt_spawn(ENCRYPTOR, [right_piston])
-        right_path = game_state_cp.find_path_to_edge(right_spawn, TOP_LEFT)
-
-        # TODO: calculate total amount of obstacles, and predict failure. give some room for error if the enemy responds with extra defenses. if failure, then abort. 
-        
-        viable_paths = []
-        if left_hole in left_path: viable_paths.append((left_spawn, left_piston, left_path, right_hole))
-        if right_hole in right_path: viable_paths.append((right_spawn, right_piston, right_path, left_hole))
-        
-        if len(viable_paths) == 0:
-            game_state.attempt_spawn(ENCRYPTOR, [left_piston, right_piston])
-            state["emp_mode"] = UNLOADED
-            return False
-
-        spawn, piston, path, unused_hole = random.sample(viable_paths, 1)[0]
-
-        game_state.attempt_spawn(ENCRYPTOR, [piston])
-        game_state.attempt_spawn(PING, [spawn], required_emps + 1) # always try to add 1 for safety
-
-
-        # early clean up just for safety ;) 
-        game_state.attempt_spawn(ENCRYPTOR, [unused_hole])
-        game_state.attempt_remove([piston])
-
-        state["emp_mode"] = UNLOADED
-        state["emp_round"] += 1
-        return True
 
 
 ######################## SCRAMBLER DEFENSE #####################################
