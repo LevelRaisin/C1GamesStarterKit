@@ -33,10 +33,8 @@ def build_initial_defense(game_state):
     """Initial static defense."""
     destructor_locations = [[1, 12], [2, 12], [25, 12], [26, 12], [11, 7], [16, 7], [12, 6], [13, 6], [14, 6], [15, 6]]
     game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-    filter_locations = [[1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
+    filter_locations = [[13,7], [14,7], [1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
     game_state.attempt_spawn(FILTER, filter_locations)
-    # UW Meta: not enough for destructors
-    # destructor_locations = [[12,4], [15,4]]
 
 
 def delete_weak_walls(game_state, state):
@@ -79,9 +77,6 @@ def build_walls(game_state, state):
     for hole in holes:
         encryptor_locations.remove(hole)
     game_state.attempt_spawn(ENCRYPTOR, encryptor_locations)
-    # if state["is_emp_attacking"]: filter_locations.remove(hole)
-    # game_state.attempt_spawn(FILTER, filter_locations)
-    # if state["is_emp_attacking"]: filter_locations.append(hole)
 
     missing_locs = list(filter(lambda loc: not game_state.game_map[loc], encryptor_locations))
     if len(missing_locs) == 0: return True
@@ -119,6 +114,9 @@ def build_walls(game_state, state):
             # generate scrambler:
             game_state.attempt_spawn(SCRAMBLER, spawn_point)
 
+    filter_locations = [[13,7], [14,7], [1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
+    game_state.attempt_spawn(FILTER, filter_locations)
+
 
 def build_inner_defense_1(game_state, state):
     locs = [[12,7], [15,7]]
@@ -135,34 +133,7 @@ def build_outer_defense_1(game_state):
     game_state.attempt_spawn(DESTRUCTOR, locs)
 
 
-def build_reinforcing_destructors(game_state, state):
-    saved = set_budget(game_state, 10)
-    if game_state.get_resource(game_state.CORES) < 7:
-        return False
-
-    filter_locs = [[20,10], [4,12], [5,11], [11,9], [12,9], [15,9], [16,9]] # [21,11] need to leave blank for emp attack
-    destructor_locs = [[1,12], [13,6], [12,8], [15,8], [23,11], [16,8], [11,8], [2,11], [22,12]] 
-
-    if "walls_updated" not in state:
-        walls = (set(tuple(l) for l in state["walls"]) - set(tuple(l) for l in destructor_locs)) | set(tuple(l) for l in filter_locs)
-        state["walls"] = [list(t) for t in walls]
-        state["walls_updated"] = True
-
-    game_state.attempt_spawn(FILTER, filter_locs)
-    for d_loc in destructor_locs:
-        replace_and_update_wall(game_state, state, d_loc, FILTER, DESTRUCTOR)
-
-    unset_budget(game_state, saved)
-
-
 ########################### BUILD OFFENSE ######################################
-def execute_one_of(fns, *args):
-    for fn in fns:
-        if fn(*args): #.result
-            return True
-    return False
-
-
 def build_offense(game_state, state):
     if state["ping_attack_prepared"]:
         attack = state["ping_attack_prepared"]

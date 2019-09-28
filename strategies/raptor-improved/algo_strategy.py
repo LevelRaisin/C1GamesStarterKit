@@ -73,16 +73,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
         # gather some state
-        self.analyze_board(game_state)
+        #self.analyze_board(game_state)
 
-        ####### Can specify which type of gameplay we want to use here: ########
-        # TODO:
-        # read opponent turn 1 placements
-        # opponent_type = classification_function.classify(placements)
-        # our_strategy = get_counter(opponent_type)
-        # execute(our_strategy)
-
-        execute_standard_strategy(game_state, self.state)
+        #execute_standard_strategy(game_state, self.state)
 
         game_state.submit_turn()
 
@@ -136,23 +129,6 @@ class AlgoStrategy(gamelib.AlgoCore):
             for i in range(scramblers_needed):
                 game_state.attempt_spawn(SCRAMBLER, [scrambler_locs[i % len(scrambler_locs)]])
 
-
-
-    ########################### EMERGENCY RESPONSE #############################
-
-    def wall_emergency(self, game_state):
-        # TODO
-        pass
-
-
-    def central_emergency(self, game_state):
-        # TODO
-        pass
-
-
-    def outer_emergency(self, game_state):
-        # TODO
-        pass
 
 
     
