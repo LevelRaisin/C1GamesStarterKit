@@ -9,8 +9,12 @@ from misc import *
 
 def execute_standard_strategy(game_state, state):
     reset_state(game_state, state)
+    real_reserve = None
+    if state["ping_attack_prepared"]: 
+        real_reserve = set_reserve(game_state, 1)
     build_defense(game_state, state)
     build_offense(game_state, state)
+    if real_reserve: unset_reserve(game_state, real_reserve)
 
 
 def reset_state(game_state, state):
@@ -37,7 +41,7 @@ def build_initial_defense(game_state):
     game_state.attempt_spawn(FILTER, filter_locations)
 
 
-def delete_weak_walls(game_state, state):
+def delete_weak_prominent_filters(game_state, state):
     pass
 #    cores_needed = 0
 #    num_cores = game_state.get_resource(game_state.CORES)
@@ -68,7 +72,7 @@ def delete_weak_walls(game_state, state):
 def build_walls(game_state, state):
     """Basic funnel-wall defense."""
 
-    encryptor_locations = [[0, 13], [2, 13], [25, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [5, 10], [22, 10], [7, 8], [8, 8], [9, 8], [18, 8], [19, 8], [20, 8]]
+    encryptor_locations = [[0, 13], [2, 13], [6,9], [25, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [25, 11], [5, 10], [22, 10], [21, 9], [23, 9], [7, 8], [20, 8], [8, 7], [9, 7], [18, 7], [19, 7]]
     # don't interrupt attack lol:
     holes = []
     if state["ping_attack_prepared"]:
@@ -143,7 +147,7 @@ def build_offense(game_state, state):
         if success: return
         success = launch_ping_attack(game_state, state, attack, r = order[1])
         if success: return
-        brute_ping(game_state, state)
+        launch_ping_attack(game_state, state, attack, r = order[1], brute_force = True)
         state["ping_attack_prepared"] = None
     else:
         tn = game_state.turn_number
@@ -169,18 +173,21 @@ def prepare_ping_attack(game_state, state):
     game_state.attempt_remove(holes)
 
 
-def launch_ping_attack(game_state, state, attack, r): # -> bool, True if attack was launched, False otherwise
+def launch_ping_attack(game_state, state, attack, r, brute_force = False): # -> bool, True if attack was launched, False otherwise
     hole = get_loc([6,9], r) 
     ping_spawn_point = get_loc([23,9], r)
     emp_spawn_point = get_loc([24,10], r)
     edge = TOP_RIGHT if r else TOP_LEFT
 
-    path = game_state.find_path_to_edge(ping_spawn_point, edge)
-    #if hole not in path: return False # TODO enable or not?
+    #path = game_state.find_path_to_edge(ping_spawn_point, edge)
+    #if not path or hole not in path: return False 
 
     n_emps, n_pings = attack
+    if not brute_force:
+        game_state.attempt_spawn(ENCRYPTOR, get_loc([6,9], not r))
     game_state.attempt_spawn(EMP, emp_spawn_point, num=n_emps)
     game_state.attempt_spawn(PING, ping_spawn_point, num=n_pings)
+    return True
 
 
 def build_encryptors_with_excess_cores(game_state, state):
@@ -195,5 +202,6 @@ def build_encryptors_with_excess_cores(game_state, state):
     assert(n <= can_build)
 
     to_build = empty_locs[:n]
-    game_state.attempt_spawn(ENCRYPTOR, to_build)
+    if to_build:
+        game_state.attempt_spawn(ENCRYPTOR, to_build)
 

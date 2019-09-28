@@ -73,9 +73,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
         
         # gather some state
-        #self.analyze_board(game_state)
+        self.analyze_board(game_state)
 
-        #execute_standard_strategy(game_state, self.state)
+        execute_standard_strategy(game_state, self.state)
 
         game_state.submit_turn()
 
