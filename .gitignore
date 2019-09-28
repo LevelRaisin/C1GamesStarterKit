@@ -19,3 +19,5 @@ submit.sh
 **/*/errorFile*
 .bash_aliases
 tmux*
+.vs_code
+plot_pp.py
