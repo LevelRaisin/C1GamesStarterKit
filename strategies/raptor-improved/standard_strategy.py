@@ -374,9 +374,10 @@ def launch_emp_attack(game_state, state):
             return False
 
         spawn, piston, path, unused_hole = random.sample(viable_paths, 1)[0]
-        
+
         game_state.attempt_spawn(ENCRYPTOR, [piston])
-        game_state.attempt_spawn(EMP, [spawn], required_emps + 1) # always try to add 1 for safety
+        game_state.attempt_spawn(PING, [spawn], required_emps + 1) # always try to add 1 for safety
+
 
         # early clean up just for safety ;) 
         game_state.attempt_spawn(ENCRYPTOR, [unused_hole])
