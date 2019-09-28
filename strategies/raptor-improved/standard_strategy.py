@@ -213,9 +213,16 @@ def launch_ping_attack(game_state, state, attack, r): # -> bool, True if attack 
 
 
 def build_encryptors_with_excess_cores(game_state, state):
-    n = int((game_state.get_resource(game_state.CORES) - 20))
     locs = [[9, 6], [10, 6], [17, 6], [18, 6], [10, 5], [11, 5], [16, 5], [17, 5]] + [[11, 4], [12, 4], [13, 4], [14, 4], [15, 4], [16, 4], [12, 3], [13, 3], [14, 3], [15, 3]] + [[12, 1], [13, 1], [14, 1], [15, 1], [13, 0], [14, 0]]
     empty_locs = [loc for loc in locs if not game_state.game_map[loc]]
+
+    current_encryptors = len(locs) - len(empty_locs)
+    can_build = int((game_state.get_resource(game_state.CORES) - 20))
+    ping_hp = 15 + 3 * (current_encryptors + can_build)
+    optimal_ping_hp = ping_hp - (ping_hp % 8) + 1
+    n = int((optimal_ping_hp - 15) / 3) - current_encryptors
+    assert(n <= can_build)
+
     to_build = empty_locs[:n]
     game_state.attempt_spawn(ENCRYPTOR, to_build)
 
