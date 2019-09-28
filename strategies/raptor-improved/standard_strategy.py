@@ -35,10 +35,10 @@ def build_defense(game_state, state):
 
 def build_initial_defense(game_state):
     """Initial static defense."""
-    destructor_locations = [[1, 12], [2, 12], [25, 12], [26, 12], [11, 7], [16, 7], [12, 6], [13, 6], [14, 6], [15, 6]]
-    game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
-    filter_locations = [[13,7], [14,7], [1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
-    game_state.attempt_spawn(FILTER, filter_locations)
+    init_filter_locations = [[1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [13, 7], [14, 7]]
+    game_state.attempt_spawn(FILTER, init_filter_locations)
+    init_destructor_locations = [[1, 12], [2, 12], [25, 12], [26, 12]]
+    game_state.attempt_spawn(DESTRUCTOR, init_destructor_locations)
 
 
 def delete_weak_prominent_filters(game_state, state):
@@ -71,8 +71,11 @@ def delete_weak_prominent_filters(game_state, state):
 
 def build_walls(game_state, state):
     """Basic funnel-wall defense."""
-
-    encryptor_locations = [[0, 13], [2, 13], [6,9], [25, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [25, 11], [5, 10], [22, 10], [21, 9], [23, 9], [7, 8], [20, 8], [8, 7], [9, 7], [18, 7], [19, 7]]
+    filter_locations = [[1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8], [13, 7], [14, 7]]
+    game_state.attempt_spawn(FILTER, filter_locations)
+    destructor_locations = [[11, 7], [16, 7], [12, 6], [13, 6], [14, 6], [15, 6], [1, 12], [2, 12], [25, 12], [26, 12]]
+    game_state.attempt_spawn(DESTRUCTOR, destructor_locations)
+    encryptor_locations = [[0, 13], [2, 13], [25, 13], [27, 13], [3, 12], [24, 12], [4, 11], [23, 11], [5, 10], [22, 10], [6, 9], [21, 9], [7, 8], [8, 8], [9, 8], [18, 8], [19, 8], [20, 8]]
     # don't interrupt attack lol:
     holes = []
     if state["ping_attack_prepared"]:
@@ -117,10 +120,6 @@ def build_walls(game_state, state):
 
             # generate scrambler:
             game_state.attempt_spawn(SCRAMBLER, spawn_point)
-
-    filter_locations = [[13,7], [14,7], [1, 13], [3, 13], [24, 13], [26, 13], [5, 11], [22, 11], [7, 9], [20, 9], [10, 8], [11, 8], [12, 8], [15, 8], [16, 8], [17, 8]]
-    game_state.attempt_spawn(FILTER, filter_locations)
-
 
 def build_inner_defense_1(game_state, state):
     locs = [[12,7], [15,7]]
