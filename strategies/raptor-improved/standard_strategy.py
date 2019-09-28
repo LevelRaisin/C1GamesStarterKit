@@ -178,48 +178,47 @@ def execute_one_of(fns, *args):
 
 
 def build_offense(game_state, state):
-    enemy_dfs = state["enemy_units"][DESTRUCTOR]
-    dfs_center = filter(lambda df: df.x >= 9 and df.x <= 18, enemy_dfs)
-    dfs_right = filter(lambda df: df.x > 18, enemy_dfs)
-
-    if state["preset_attack"]:
-        state["preset_attack"](game_state, state)
-        return
-
+    tn = game_state.turn_number
+    #         EMP,  PING
+    attack = [2, 6]
+    attack = [2, 14]
+    attack = [3, 16]
+    if tn > 10: attack = [2, 10]
+    elif tn > 20: attack = [2, 10]
+    elif tn > 30: attack = [2, 14]
+    elif tn > 40: attack = [3, 16]
     ping_attacked = launch_ping_attack(game_state, state)
-    if ping_attacked:
-        return
 
-    hole = get_hole(state)
-    if hole == [22,11]:
-        path = [[22,8], [22,9], [22,10], [22,11], [21,11], [21,12], [20,12], [20,13], [19,13], [19,14], [18,14], [18,15], [17,15]]
-    else:
-        path = [[22,8], [22,9], [23,9], [23,10], [24,10], [24,11], [25,11], [25,12], [26,12], [26,13], [26,14], [25,14], [25,15], [24,15], [24,16]]
-    max_emp = int(game_state.project_future_bits(6, 0) / 3)
-    for emps_required in range(3, max_emp + 1):
-        num_emp = emps_required
-        last_step_area = set()
-        hits_needed_to_clear = 0
-        for step in path:
-            curr_step_area = set(tuple(l) for l in game_state.game_map.get_locations_in_range(step, 4.5))
-            new_area = curr_step_area - last_step_area
+    #hole = get_hole(state)
+    #if hole == [22,11]:
+    #    path = [[22,8], [22,9], [22,10], [22,11], [21,11], [21,12], [20,12], [20,13], [19,13], [19,14], [18,14], [18,15], [17,15]]
+    #else:
+    #    path = [[22,8], [22,9], [23,9], [23,10], [24,10], [24,11], [25,11], [25,12], [26,12], [26,13], [26,14], [25,14], [25,15], [24,15], [24,16]]
+    #max_emp = int(game_state.project_future_bits(6, 0) / 3)
+    #for emps_required in range(3, max_emp + 1):
+    #    num_emp = emps_required
+    #    last_step_area = set()
+    #    hits_needed_to_clear = 0
+    #    for step in path:
+    #        curr_step_area = set(tuple(l) for l in game_state.game_map.get_locations_in_range(step, 4.5))
+    #        new_area = curr_step_area - last_step_area
 
-            tiles = get_tiles(game_state, list(list(t) for t in new_area))
-            units = (tile[0] for tile in tiles if tile)
-            enemies = filter(lambda unit: unit.player_index == 1, units)
-            num_destructors = len(list(filter(lambda unit: unit.unit_type == DESTRUCTOR, enemies)))
+    #        tiles = get_tiles(game_state, list(list(t) for t in new_area))
+    #        units = (tile[0] for tile in tiles if tile)
+    #        enemies = filter(lambda unit: unit.player_index == 1, units)
+    #        num_destructors = len(list(filter(lambda unit: unit.unit_type == DESTRUCTOR, enemies)))
 
-            hits_needed_to_clear += sum(math.ceil(unit.stability / 8) for unit in units if unit.player_index == 1)
-            hits_available = 2 * num_emp
-            if hits_available < hits_needed_to_clear and num_destructors > 0:
-                num_emp -= 1
-            hits_needed_to_clear = max(hits_needed_to_clear - hits_available, 0)
-            if num_emp <= 0: break
-            last_step_area = curr_step_area
-        if num_emp > 0:
-            break
-    if emps_required < max_emp and random.random() < 0.5: emps_required += 1
-    prepare_emp_attack(game_state, state, emps_required)
+    #        hits_needed_to_clear += sum(math.ceil(unit.stability / 8) for unit in units if unit.player_index == 1)
+    #        hits_available = 2 * num_emp
+    #        if hits_available < hits_needed_to_clear and num_destructors > 0:
+    #            num_emp -= 1
+    #        hits_needed_to_clear = max(hits_needed_to_clear - hits_available, 0)
+    #        if num_emp <= 0: break
+    #        last_step_area = curr_step_area
+    #    if num_emp > 0:
+    #        break
+    #if emps_required < max_emp and random.random() < 0.5: emps_required += 1
+    #prepare_emp_attack(game_state, state, emps_required)
 
 
 def launch_ping_attack(game_state, state): # -> bool, True if attack was launched, False otherwise
